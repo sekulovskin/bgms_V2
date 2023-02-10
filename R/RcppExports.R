@@ -69,8 +69,24 @@ log_unnormalized_pseudoposterior_normal <- function(interactions, thresholds, ob
     .Call(`_bgms_log_unnormalized_pseudoposterior_normal`, interactions, thresholds, observations, no_categories, interaction_var, threshold_alpha, threshold_beta)
 }
 
-log_unnormalized_pseudoposterior_cauchy <- function(interactions, thresholds, observations, cauchy_scale, no_categories, threshold_alpha = 1.0, threshold_beta = 1.0) {
-    .Call(`_bgms_log_unnormalized_pseudoposterior_cauchy`, interactions, thresholds, observations, cauchy_scale, no_categories, threshold_alpha, threshold_beta)
+log_unnormalized_pseudoposterior_cauchy <- function(interactions, thresholds, observations, scale, no_categories, threshold_alpha = 1.0, threshold_beta = 1.0) {
+    .Call(`_bgms_log_unnormalized_pseudoposterior_cauchy`, interactions, thresholds, observations, scale, no_categories, threshold_alpha, threshold_beta)
+}
+
+dlap <- function(interaction, mu = 0.0, b = 1.0, log = TRUE) {
+    .Call(`_bgms_dlap`, interaction, mu, b, log)
+}
+
+log_unnormalized_pseudoposterior_laplace <- function(interactions, thresholds, observations, scale, no_categories, threshold_alpha = 1.0, threshold_beta = 1.0) {
+    .Call(`_bgms_log_unnormalized_pseudoposterior_laplace`, interactions, thresholds, observations, scale, no_categories, threshold_alpha, threshold_beta)
+}
+
+dh <- function(interaction, scale = 1.0, tau = 1.0, log = TRUE) {
+    .Call(`_bgms_dh`, interaction, scale, tau, log)
+}
+
+log_unnormalized_pseudoposterior_horseshoe <- function(interactions, thresholds, observations, scale, tau, no_categories, threshold_alpha = 1.0, threshold_beta = 1.0) {
+    .Call(`_bgms_log_unnormalized_pseudoposterior_horseshoe`, interactions, thresholds, observations, scale, tau, no_categories, threshold_alpha, threshold_beta)
 }
 
 emvs_log_unnormalized_pseudoposterior <- function(interactions, thresholds, observations, no_categories, xi, slab_var, theta = 0.5, hierarchical = FALSE, indicator_alpha = 1.0, indicator_beta = 1.0, threshold_alpha = 1.0, threshold_beta = 1.0) {

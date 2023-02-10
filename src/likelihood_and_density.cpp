@@ -85,7 +85,7 @@ double log_unnormalized_pseudoposterior_normal(NumericMatrix interactions,
 double log_unnormalized_pseudoposterior_cauchy(NumericMatrix interactions,
                                                NumericMatrix thresholds,
                                                IntegerMatrix observations,
-                                               double cauchy_scale,
+                                               double scale,
                                                IntegerVector no_categories,
                                                double threshold_alpha = 1.0,
                                                double threshold_beta = 1.0) {
@@ -100,7 +100,115 @@ double log_unnormalized_pseudoposterior_cauchy(NumericMatrix interactions,
     for(int t = s + 1; t < no_nodes; t++) {
       unn_pseudo_post += R::dcauchy(interactions(s, t), 
                             0.0, 
-                            cauchy_scale, 
+                            scale, 
+                            true);
+    }
+  }
+  
+  //Contribution of the prior densities (thresholds) ---------------------------
+  for(int s = 0; s < no_nodes; s++) {
+    for(int category = 0; category < no_categories[s]; category++) {
+      unn_pseudo_post -= R::lbeta(threshold_alpha, threshold_beta);
+      unn_pseudo_post += threshold_alpha * thresholds(s, category);
+      unn_pseudo_post -= (threshold_alpha + threshold_beta) * 
+        std::log(1 + std::exp(thresholds(s, category)));
+    }
+  }
+  return unn_pseudo_post;
+}
+
+
+// [[Rcpp::export]]
+double dlap(double interaction,
+            double mu = 0.0,
+            double b = 1.0,
+            bool log = true) {
+  
+  
+  double logden = - std::log(2) - std::log(b) - std::abs(interaction-mu)/b;
+  
+  if(log == true){
+    return(logden);
+  }
+  
+  else{
+    return(std::exp(logden));
+  }
+}
+
+
+// [[Rcpp::export]]
+double log_unnormalized_pseudoposterior_laplace(NumericMatrix interactions,
+                                            NumericMatrix thresholds,
+                                            IntegerMatrix observations,
+                                            double scale,
+                                            IntegerVector no_categories,
+                                            double threshold_alpha = 1.0,
+                                            double threshold_beta = 1.0) {
+  int no_nodes = observations.ncol();
+  double unn_pseudo_post = log_pseudolikelihood(interactions,
+                                                thresholds,
+                                                observations,
+                                                no_categories);
+  
+  //Contribution of the prior densities (interactions) -------------------------
+  for(int s = 0; s < no_nodes - 1; s++) {
+    for(int t = s + 1; t < no_nodes; t++) {
+      unn_pseudo_post += dlap(interactions(s, t), 
+                              0.0, 
+                              scale, 
+                              true);
+    }
+  }
+  
+  //Contribution of the prior densities (thresholds) ---------------------------
+  for(int s = 0; s < no_nodes; s++) {
+    for(int category = 0; category < no_categories[s]; category++) {
+      unn_pseudo_post -= R::lbeta(threshold_alpha, threshold_beta);
+      unn_pseudo_post += threshold_alpha * thresholds(s, category);
+      unn_pseudo_post -= (threshold_alpha + threshold_beta) * 
+        std::log(1 + std::exp(thresholds(s, category)));
+    }
+  }
+  return unn_pseudo_post;
+}
+
+
+// [[Rcpp::export]]
+double dh(double interaction,
+          double scale = 1.0,
+          double tau = 1.0,
+          bool log = true) {
+  
+  double p = R::runif(0, 1);
+  double lambda = scale * std::tan((3.141593 * p)/2);
+  double sd =  lambda* tau;
+  double logden = R::dnorm(interaction, 0, sd, log = log);
+  return(logden);
+}
+
+
+// [[Rcpp::export]]
+double log_unnormalized_pseudoposterior_horseshoe(NumericMatrix interactions,
+                                                  NumericMatrix thresholds,
+                                                  IntegerMatrix observations,
+                                                  double scale,
+                                                  double tau,
+                                                  IntegerVector no_categories,
+                                                  double threshold_alpha = 1.0,
+                                                  double threshold_beta = 1.0) {
+  int no_nodes = observations.ncol();
+  double unn_pseudo_post = log_pseudolikelihood(interactions,
+                                                thresholds,
+                                                observations,
+                                                no_categories);
+  
+  //Contribution of the prior densities (interactions) -------------------------
+  for(int s = 0; s < no_nodes - 1; s++) {
+    for(int t = s + 1; t < no_nodes; t++) {
+      unn_pseudo_post += dh(interactions(s, t),
+                            scale,
+                            tau,
                             true);
     }
   }

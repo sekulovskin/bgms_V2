@@ -278,19 +278,82 @@ BEGIN_RCPP
 END_RCPP
 }
 // log_unnormalized_pseudoposterior_cauchy
-double log_unnormalized_pseudoposterior_cauchy(NumericMatrix interactions, NumericMatrix thresholds, IntegerMatrix observations, double cauchy_scale, IntegerVector no_categories, double threshold_alpha, double threshold_beta);
-RcppExport SEXP _bgms_log_unnormalized_pseudoposterior_cauchy(SEXP interactionsSEXP, SEXP thresholdsSEXP, SEXP observationsSEXP, SEXP cauchy_scaleSEXP, SEXP no_categoriesSEXP, SEXP threshold_alphaSEXP, SEXP threshold_betaSEXP) {
+double log_unnormalized_pseudoposterior_cauchy(NumericMatrix interactions, NumericMatrix thresholds, IntegerMatrix observations, double scale, IntegerVector no_categories, double threshold_alpha, double threshold_beta);
+RcppExport SEXP _bgms_log_unnormalized_pseudoposterior_cauchy(SEXP interactionsSEXP, SEXP thresholdsSEXP, SEXP observationsSEXP, SEXP scaleSEXP, SEXP no_categoriesSEXP, SEXP threshold_alphaSEXP, SEXP threshold_betaSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< NumericMatrix >::type interactions(interactionsSEXP);
     Rcpp::traits::input_parameter< NumericMatrix >::type thresholds(thresholdsSEXP);
     Rcpp::traits::input_parameter< IntegerMatrix >::type observations(observationsSEXP);
-    Rcpp::traits::input_parameter< double >::type cauchy_scale(cauchy_scaleSEXP);
+    Rcpp::traits::input_parameter< double >::type scale(scaleSEXP);
     Rcpp::traits::input_parameter< IntegerVector >::type no_categories(no_categoriesSEXP);
     Rcpp::traits::input_parameter< double >::type threshold_alpha(threshold_alphaSEXP);
     Rcpp::traits::input_parameter< double >::type threshold_beta(threshold_betaSEXP);
-    rcpp_result_gen = Rcpp::wrap(log_unnormalized_pseudoposterior_cauchy(interactions, thresholds, observations, cauchy_scale, no_categories, threshold_alpha, threshold_beta));
+    rcpp_result_gen = Rcpp::wrap(log_unnormalized_pseudoposterior_cauchy(interactions, thresholds, observations, scale, no_categories, threshold_alpha, threshold_beta));
+    return rcpp_result_gen;
+END_RCPP
+}
+// dlap
+double dlap(double interaction, double mu, double b, bool log);
+RcppExport SEXP _bgms_dlap(SEXP interactionSEXP, SEXP muSEXP, SEXP bSEXP, SEXP logSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type interaction(interactionSEXP);
+    Rcpp::traits::input_parameter< double >::type mu(muSEXP);
+    Rcpp::traits::input_parameter< double >::type b(bSEXP);
+    Rcpp::traits::input_parameter< bool >::type log(logSEXP);
+    rcpp_result_gen = Rcpp::wrap(dlap(interaction, mu, b, log));
+    return rcpp_result_gen;
+END_RCPP
+}
+// log_unnormalized_pseudoposterior_laplace
+double log_unnormalized_pseudoposterior_laplace(NumericMatrix interactions, NumericMatrix thresholds, IntegerMatrix observations, double scale, IntegerVector no_categories, double threshold_alpha, double threshold_beta);
+RcppExport SEXP _bgms_log_unnormalized_pseudoposterior_laplace(SEXP interactionsSEXP, SEXP thresholdsSEXP, SEXP observationsSEXP, SEXP scaleSEXP, SEXP no_categoriesSEXP, SEXP threshold_alphaSEXP, SEXP threshold_betaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type interactions(interactionsSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type thresholds(thresholdsSEXP);
+    Rcpp::traits::input_parameter< IntegerMatrix >::type observations(observationsSEXP);
+    Rcpp::traits::input_parameter< double >::type scale(scaleSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type no_categories(no_categoriesSEXP);
+    Rcpp::traits::input_parameter< double >::type threshold_alpha(threshold_alphaSEXP);
+    Rcpp::traits::input_parameter< double >::type threshold_beta(threshold_betaSEXP);
+    rcpp_result_gen = Rcpp::wrap(log_unnormalized_pseudoposterior_laplace(interactions, thresholds, observations, scale, no_categories, threshold_alpha, threshold_beta));
+    return rcpp_result_gen;
+END_RCPP
+}
+// dh
+double dh(double interaction, double scale, double tau, bool log);
+RcppExport SEXP _bgms_dh(SEXP interactionSEXP, SEXP scaleSEXP, SEXP tauSEXP, SEXP logSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< double >::type interaction(interactionSEXP);
+    Rcpp::traits::input_parameter< double >::type scale(scaleSEXP);
+    Rcpp::traits::input_parameter< double >::type tau(tauSEXP);
+    Rcpp::traits::input_parameter< bool >::type log(logSEXP);
+    rcpp_result_gen = Rcpp::wrap(dh(interaction, scale, tau, log));
+    return rcpp_result_gen;
+END_RCPP
+}
+// log_unnormalized_pseudoposterior_horseshoe
+double log_unnormalized_pseudoposterior_horseshoe(NumericMatrix interactions, NumericMatrix thresholds, IntegerMatrix observations, double scale, double tau, IntegerVector no_categories, double threshold_alpha, double threshold_beta);
+RcppExport SEXP _bgms_log_unnormalized_pseudoposterior_horseshoe(SEXP interactionsSEXP, SEXP thresholdsSEXP, SEXP observationsSEXP, SEXP scaleSEXP, SEXP tauSEXP, SEXP no_categoriesSEXP, SEXP threshold_alphaSEXP, SEXP threshold_betaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type interactions(interactionsSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type thresholds(thresholdsSEXP);
+    Rcpp::traits::input_parameter< IntegerMatrix >::type observations(observationsSEXP);
+    Rcpp::traits::input_parameter< double >::type scale(scaleSEXP);
+    Rcpp::traits::input_parameter< double >::type tau(tauSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type no_categories(no_categoriesSEXP);
+    Rcpp::traits::input_parameter< double >::type threshold_alpha(threshold_alphaSEXP);
+    Rcpp::traits::input_parameter< double >::type threshold_beta(threshold_betaSEXP);
+    rcpp_result_gen = Rcpp::wrap(log_unnormalized_pseudoposterior_horseshoe(interactions, thresholds, observations, scale, tau, no_categories, threshold_alpha, threshold_beta));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -336,6 +399,10 @@ static const R_CallMethodDef CallEntries[] = {
     {"_bgms_log_pseudolikelihood", (DL_FUNC) &_bgms_log_pseudolikelihood, 4},
     {"_bgms_log_unnormalized_pseudoposterior_normal", (DL_FUNC) &_bgms_log_unnormalized_pseudoposterior_normal, 7},
     {"_bgms_log_unnormalized_pseudoposterior_cauchy", (DL_FUNC) &_bgms_log_unnormalized_pseudoposterior_cauchy, 7},
+    {"_bgms_dlap", (DL_FUNC) &_bgms_dlap, 4},
+    {"_bgms_log_unnormalized_pseudoposterior_laplace", (DL_FUNC) &_bgms_log_unnormalized_pseudoposterior_laplace, 7},
+    {"_bgms_dh", (DL_FUNC) &_bgms_dh, 4},
+    {"_bgms_log_unnormalized_pseudoposterior_horseshoe", (DL_FUNC) &_bgms_log_unnormalized_pseudoposterior_horseshoe, 8},
     {"_bgms_emvs_log_unnormalized_pseudoposterior", (DL_FUNC) &_bgms_emvs_log_unnormalized_pseudoposterior, 12},
     {NULL, NULL, 0}
 };

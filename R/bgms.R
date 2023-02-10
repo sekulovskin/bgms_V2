@@ -29,7 +29,7 @@
 #' (\code{interaction_prior = "UnitInfo"}) and the Cauchy prior 
 #' (\code{interaction_prior = "Cauchy"}). Defaults to \code{"UnitInfo"}.
 #' 
-#' @param cauchy_scale The scale of the Cauchy prior for interactions. Defaults 
+#' @param scale The scale of the Cauchy prior for interactions. Defaults 
 #' to \code{2.5}. 
 #' 
 #' @param threshold_alpha,threshold_beta The shape parameters of the Beta-prime 
@@ -71,9 +71,10 @@ bgms = function(x,
                 no_iterations = 1e5,
                 burnin = 1e3,
                 interaction_prior = c("UnitInfo", "Cauchy"),
-                cauchy_scale = 2.5,
+                scale = 2.5,
                 threshold_alpha = 1,
                 threshold_beta = 1,
+                tau = 1,
                 save = FALSE,
                 caching = TRUE,
                 display_progress = FALSE) {
@@ -86,8 +87,9 @@ bgms = function(x,
   
   #Check prior set-up for the interaction parameters ---------------------------
   interaction_prior = match.arg(interaction_prior)
-  if(interaction_prior == "Cauchy") {
-    if(cauchy_scale <= 0)
+  if(interaction_prior == "Cauchy" | interaction_prior == "Laplace" 
+     | interaction_prior == "Horseshoe") {
+    if(scale <= 0)
       stop("The scale of the Cauchy prior needs to be positive.")
   }  
   
@@ -116,11 +118,12 @@ bgms = function(x,
   no_thresholds = sum(no_categories)
   
   #Proposal set-up for the interaction parameters ------------------------------
-  if(interaction_prior == "Cauchy") {
+  if(interaction_prior == "Cauchy" | interaction_prior == "Laplace" 
+     | interaction_prior == "Horseshoe") {
     pps = try(mppe(x = x, 
                    no_categories = no_categories, 
                    interaction_prior = interaction_prior, 
-                   cauchy_scale = cauchy_scale), 
+                   scale = scale), 
               silent = TRUE)
   } else {
     pps = try(mppe(x = x, 
@@ -139,7 +142,13 @@ bgms = function(x,
   
   if(interaction_prior == "UnitInfo") {
     unit_info = sqrt(pps$unit_info)
-  } else {
+  } 
+  
+  else if(interaction_prior == "UnitInfo+") {
+    unit_info = pps$unit_info
+  } 
+  
+  else {
     unit_info = matrix(data = NA, nrow = 1, ncol = 1)
   }
   
@@ -198,7 +207,8 @@ bgms = function(x,
                       thresholds = thresholds,
                       no_categories  = no_categories,
                       interaction_prior = interaction_prior,
-                      cauchy_scale = cauchy_scale,
+                      scale = scale,
+                      tau,
                       unit_info = unit_info,
                       proposal_sd = proposal_sd,
                       Index = Index,
