@@ -4,6 +4,44 @@
 #include <progress_bar.hpp>
 using namespace Rcpp;
 
+
+// ----------------------------------------------------------------------------|
+//  Laplace density function
+// ----------------------------------------------------------------------------|
+double dlap_1(double interaction,
+              double mu = 0.0,
+              double b = 1.0,
+              bool log = true) {
+  
+  double logden = - std::log(2) - std::log(b) - std::abs(interaction-mu)/b;
+  
+  if(log == true){
+    return(logden);
+  }
+  
+  else{
+    return(std::exp(logden));
+  }
+}
+
+
+// ----------------------------------------------------------------------------|
+//  Horseshoe density function
+// ----------------------------------------------------------------------------|
+
+double dh_1(double interaction,
+            double scale = 1.0,
+            double tau = 1.0,
+            bool log = true) {
+  
+  double p = R::runif(0, 1);
+  double lambda = scale * std::tan((3.141593 * p)/2);
+  double sd =  lambda* tau;
+  double logden = R::dnorm(interaction, 0, sd, log = log);
+  return(logden);
+}
+
+
 // ----------------------------------------------------------------------------|
 // MH algorithm to sample from the full-conditional of the threshold parameters
 // --using caching
@@ -357,7 +395,7 @@ List metropolis_interactions_cauchy_caching(NumericMatrix interactions,
                                             IntegerMatrix observations,
                                             IntegerVector no_categories,
                                             NumericMatrix proposal_sd,
-                                            double cauchy_scale,
+                                            double scale,
                                             int no_persons,
                                             int no_nodes,
                                             NumericMatrix rest_matrix) {
@@ -383,8 +421,8 @@ List metropolis_interactions_cauchy_caching(NumericMatrix interactions,
                                                       proposed_state,
                                                       current_state, 
                                                       rest_matrix);
-        log_prob += R::dcauchy(proposed_state, 0.0, cauchy_scale, true);
-        log_prob -= R::dcauchy(current_state, 0.0, cauchy_scale, true);
+        log_prob += R::dcauchy(proposed_state, 0.0, scale, true);
+        log_prob -= R::dcauchy(current_state, 0.0, scale, true);
         
         //U = R::unif_rand();
         U = R::runif(0, 1);
@@ -416,7 +454,7 @@ NumericMatrix metropolis_interactions_cauchy_nocaching(NumericMatrix interaction
                                                        IntegerMatrix observations,
                                                        IntegerVector no_categories,
                                                        NumericMatrix proposal_sd,
-                                                       double cauchy_scale,
+                                                       double scale,
                                                        int no_persons,
                                                        int no_nodes) {
   double proposed_state;
@@ -441,8 +479,229 @@ NumericMatrix metropolis_interactions_cauchy_nocaching(NumericMatrix interaction
                                                         node2,
                                                         proposed_state,
                                                         current_state);
-        log_prob += R::dcauchy(proposed_state, 0.0, cauchy_scale, true);
-        log_prob -= R::dcauchy(current_state, 0.0, cauchy_scale, true);
+        log_prob += R::dcauchy(proposed_state, 0.0, scale, true);
+        log_prob -= R::dcauchy(current_state, 0.0, scale, true);
+        
+        U = R::unif_rand();
+        if(std::log(U) < log_prob) {
+          interactions(node1, node2) = proposed_state;
+          interactions(node2, node1) = proposed_state;
+        }
+      }
+  }
+  return interactions;
+}
+
+
+
+// ----------------------------------------------------------------------------|
+// MH algorithm to sample from the cull-conditional of the active interaction 
+//  parameters (using a laplace prior)
+// --using caching
+// ----------------------------------------------------------------------------|
+List metropolis_interactions_laplace_caching(NumericMatrix interactions, 
+                                            NumericMatrix thresholds,
+                                            IntegerMatrix gamma,
+                                            IntegerMatrix observations,
+                                            IntegerVector no_categories,
+                                            NumericMatrix proposal_sd,
+                                            double scale,
+                                            int no_persons,
+                                            int no_nodes,
+                                            NumericMatrix rest_matrix) {
+  double proposed_state;
+  double current_state;
+  double log_prob;
+  double U;
+  
+  for(int node1 = 0; node1 <  no_nodes - 1; node1++) {
+    for(int node2 = node1 + 1; node2 <  no_nodes; node2++)
+      if(gamma(node1, node2) == 1) {
+        current_state = interactions(node1, node2);
+        proposed_state = R::rnorm(current_state,
+                                  proposal_sd(node1, node2));
+        
+        log_prob = log_pseudolikelihood_ratio_caching(interactions,
+                                                      thresholds,
+                                                      observations,
+                                                      no_categories,
+                                                      no_persons,
+                                                      node1,
+                                                      node2,
+                                                      proposed_state,
+                                                      current_state, 
+                                                      rest_matrix);
+        log_prob += dlap_1(proposed_state, 0.0, scale, true);
+        log_prob -= dlap_1(current_state, 0.0, scale, true);
+        
+        //U = R::unif_rand();
+        U = R::runif(0, 1);
+        if(std::log(U) < log_prob) {
+          interactions(node1, node2) = proposed_state;
+          interactions(node2, node1) = proposed_state;
+          
+          //Update the matrix of rest scores
+          for(int person = 0; person < no_persons; person++) {
+            rest_matrix(person, node1) += observations(person, node2) * 
+              (proposed_state - current_state);
+            rest_matrix(person, node2) += observations(person, node1) * 
+              (proposed_state - current_state);
+          }
+        }
+      }
+  }
+  return List::create(Named("interactions") = interactions,
+                      Named("rest_matrix") = rest_matrix);
+}
+
+// ----------------------------------------------------------------------------|
+// MH algorithm to sample from the cull-conditional of the active interaction 
+//  parameters (using a laplace prior) --no caching
+// ----------------------------------------------------------------------------|
+NumericMatrix metropolis_interactions_laplace_nocaching(NumericMatrix interactions, 
+                                                       NumericMatrix thresholds,
+                                                       IntegerMatrix gamma,
+                                                       IntegerMatrix observations,
+                                                       IntegerVector no_categories,
+                                                       NumericMatrix proposal_sd,
+                                                       double scale,
+                                                       int no_persons,
+                                                       int no_nodes) {
+  double proposed_state;
+  double current_state;
+  double log_prob;
+  double U;
+  
+  for(int node1 = 0; node1 <  no_nodes - 1; node1++) {
+    for(int node2 = node1 + 1; node2 <  no_nodes; node2++)
+      if(gamma(node1, node2) == 1) {
+        current_state = interactions(node1, node2);
+        proposed_state = R::rnorm(current_state,
+                                  proposal_sd(node1, node2));
+        
+        log_prob = log_pseudolikelihood_ratio_nocaching(interactions,
+                                                        thresholds,
+                                                        observations,
+                                                        no_categories,
+                                                        no_persons,
+                                                        no_nodes,
+                                                        node1,
+                                                        node2,
+                                                        proposed_state,
+                                                        current_state);
+        log_prob += dlap_1(proposed_state, 0.0, scale, true);
+        log_prob -= dlap_1(current_state, 0.0, scale, true);
+        
+        U = R::unif_rand();
+        if(std::log(U) < log_prob) {
+          interactions(node1, node2) = proposed_state;
+          interactions(node2, node1) = proposed_state;
+        }
+      }
+  }
+  return interactions;
+}
+
+
+// ----------------------------------------------------------------------------|
+// MH algorithm to sample from the cull-conditional of the active interaction 
+//  parameters (using horseshoe prior)
+// --using caching
+// ----------------------------------------------------------------------------|
+List metropolis_interactions_horseshoe_caching(NumericMatrix interactions, 
+                                             NumericMatrix thresholds,
+                                             IntegerMatrix gamma,
+                                             IntegerMatrix observations,
+                                             IntegerVector no_categories,
+                                             NumericMatrix proposal_sd,
+                                             double scale,
+                                             double tau,
+                                             int no_persons,
+                                             int no_nodes,
+                                             NumericMatrix rest_matrix) {
+  double proposed_state;
+  double current_state;
+  double log_prob;
+  double U;
+  
+  for(int node1 = 0; node1 <  no_nodes - 1; node1++) {
+    for(int node2 = node1 + 1; node2 <  no_nodes; node2++)
+      if(gamma(node1, node2) == 1) {
+        current_state = interactions(node1, node2);
+        proposed_state = R::rnorm(current_state,
+                                  proposal_sd(node1, node2));
+        
+        log_prob = log_pseudolikelihood_ratio_caching(interactions,
+                                                      thresholds,
+                                                      observations,
+                                                      no_categories,
+                                                      no_persons,
+                                                      node1,
+                                                      node2,
+                                                      proposed_state,
+                                                      current_state, 
+                                                      rest_matrix);
+        log_prob += dh_1(proposed_state, scale, tau, true);
+        log_prob -= dh_1(current_state, scale, tau, true);
+        
+        //U = R::unif_rand();
+        U = R::runif(0, 1);
+        if(std::log(U) < log_prob) {
+          interactions(node1, node2) = proposed_state;
+          interactions(node2, node1) = proposed_state;
+          
+          //Update the matrix of rest scores
+          for(int person = 0; person < no_persons; person++) {
+            rest_matrix(person, node1) += observations(person, node2) * 
+              (proposed_state - current_state);
+            rest_matrix(person, node2) += observations(person, node1) * 
+              (proposed_state - current_state);
+          }
+        }
+      }
+  }
+  return List::create(Named("interactions") = interactions,
+                      Named("rest_matrix") = rest_matrix);
+}
+
+// ----------------------------------------------------------------------------|
+// MH algorithm to sample from the cull-conditional of the active interaction 
+//  parameters (using a horseshoe prior) --no caching
+// ----------------------------------------------------------------------------|
+NumericMatrix metropolis_interactions_horseshoe_nocaching(NumericMatrix interactions, 
+                                                        NumericMatrix thresholds,
+                                                        IntegerMatrix gamma,
+                                                        IntegerMatrix observations,
+                                                        IntegerVector no_categories,
+                                                        NumericMatrix proposal_sd,
+                                                        double scale,
+                                                        double tau,
+                                                        int no_persons,
+                                                        int no_nodes) {
+  double proposed_state;
+  double current_state;
+  double log_prob;
+  double U;
+  
+  for(int node1 = 0; node1 <  no_nodes - 1; node1++) {
+    for(int node2 = node1 + 1; node2 <  no_nodes; node2++)
+      if(gamma(node1, node2) == 1) {
+        current_state = interactions(node1, node2);
+        proposed_state = R::rnorm(current_state,
+                                  proposal_sd(node1, node2));
+        
+        log_prob = log_pseudolikelihood_ratio_nocaching(interactions,
+                                                        thresholds,
+                                                        observations,
+                                                        no_categories,
+                                                        no_persons,
+                                                        no_nodes,
+                                                        node1,
+                                                        node2,
+                                                        proposed_state,
+                                                        current_state);
+        log_prob += dh_1(proposed_state, scale, tau, true);
+        log_prob -= dh_1(current_state, scale, tau, true);
         
         U = R::unif_rand();
         if(std::log(U) < log_prob) {
@@ -573,6 +832,157 @@ NumericMatrix metropolis_interactions_unitinfo_nocaching(NumericMatrix interacti
   return interactions;
 }
 
+
+
+// ----------------------------------------------------------------------------|
+// MH algorithm to sample from the cull-conditional of the active interaction 
+//  parameters (using an extended unit information prior) --using caching
+// ----------------------------------------------------------------------------|
+List metropolis_interactions_unitinfo_plus_caching(NumericMatrix interactions, 
+                                              NumericMatrix thresholds,
+                                              IntegerMatrix gamma,
+                                              IntegerMatrix observations,
+                                              IntegerVector no_categories,
+                                              NumericMatrix proposal_sd,
+                                              NumericMatrix unit_info,
+                                              int no_persons,
+                                              int no_nodes,
+                                              NumericMatrix rest_matrix) {
+  double proposed_state;
+  double current_state;
+  double log_prob;
+  double U;
+  
+  // import the functions that calculate the conditional means and variances 
+  
+  Function conditional_interactions_mu("conditional_interactions_mu");
+  Function conditional_interactions_sigma("conditional_interactions_sigma");
+  
+  // calculate the conditional means and variances 
+  NumericMatrix cond_mu = conditional_interactions_mu(unit_info, 
+                                                      interactions, 
+                                                      observations);
+  
+  NumericMatrix cond_sigma = conditional_interactions_sigma(unit_info, 
+                                                            interactions, 
+                                                            observations);
+  
+  for(int node1 = 0; node1 <  no_nodes - 1; node1++) {
+    for(int node2 = node1 + 1; node2 <  no_nodes; node2++)
+      if(gamma(node1, node2) == 1) {
+        current_state = interactions(node1, node2);
+        proposed_state = R::rnorm(current_state,
+                                  proposal_sd(node1, node2));
+        
+        log_prob = log_pseudolikelihood_ratio_caching(interactions,
+                                                      thresholds,
+                                                      observations,
+                                                      no_categories,
+                                                      no_persons,
+                                                      node1,
+                                                      node2,
+                                                      proposed_state,
+                                                      current_state,
+                                                      rest_matrix);
+        log_prob += R::dnorm(proposed_state, 
+                             cond_mu(node1, node2), 
+                             cond_sigma(node1, node2), 
+                             true);
+        log_prob -= R::dnorm(current_state, 
+                             cond_mu(node1, node2), 
+                             cond_sigma(node1, node2), 
+                             true);
+        
+        //U = R::unif_rand();
+        U = R::runif(0, 1);
+        if(std::log(U) < log_prob) {
+          interactions(node1, node2) = proposed_state;
+          interactions(node2, node1) = proposed_state;
+          
+          //Update the matrix of rest scores
+          for(int person = 0; person < no_persons; person++) {
+            rest_matrix(person, node1) += observations(person, node2) * 
+              (proposed_state - current_state);
+            rest_matrix(person, node2) += observations(person, node1) * 
+              (proposed_state - current_state);
+          }
+        }
+      }
+  }
+  return List::create(Named("interactions") = interactions,
+                      Named("rest_matrix") = rest_matrix);
+}
+
+// ----------------------------------------------------------------------------|
+// MH algorithm to sample from the cull-conditional of the active interaction 
+//  parameters (using a unit information prior) --without caching
+// ----------------------------------------------------------------------------|
+NumericMatrix metropolis_interactions_unitinfo_plus_nocaching(NumericMatrix interactions, 
+                                                         NumericMatrix thresholds,
+                                                         IntegerMatrix gamma,
+                                                         IntegerMatrix observations,
+                                                         IntegerVector no_categories,
+                                                         NumericMatrix proposal_sd,
+                                                         NumericMatrix unit_info,
+                                                         int no_persons,
+                                                         int no_nodes) {
+  double proposed_state;
+  double current_state;
+  double log_prob;
+  double U;
+  // import the functions that calculate the conditional means and variances 
+  
+  Function conditional_interactions_mu("conditional_interactions_mu");
+  Function conditional_interactions_sigma("conditional_interactions_sigma");
+  
+  // calculate the conditional means and variances 
+  NumericMatrix cond_mu = conditional_interactions_mu(unit_info, 
+                                                      interactions, 
+                                                      observations);
+  
+  NumericMatrix cond_sigma = conditional_interactions_sigma(unit_info, 
+                                                            interactions, 
+                                                            observations);
+  
+  for(int node1 = 0; node1 <  no_nodes - 1; node1++) {
+    for(int node2 = node1 + 1; node2 <  no_nodes; node2++)
+      if(gamma(node1, node2) == 1) {
+        current_state = interactions(node1, node2);
+        proposed_state = R::rnorm(current_state,
+                                  proposal_sd(node1, node2));
+        
+        log_prob = log_pseudolikelihood_ratio_nocaching(interactions,
+                                                        thresholds,
+                                                        observations,
+                                                        no_categories,
+                                                        no_persons,
+                                                        no_nodes,
+                                                        node1,
+                                                        node2,
+                                                        proposed_state,
+                                                        current_state);
+        log_prob += R::dnorm(proposed_state, 
+                             cond_mu(node1, node2), 
+                             cond_sigma(node1, node2), 
+                             true);
+        log_prob -= R::dnorm(current_state, 
+                             cond_mu(node1, node2), 
+                             cond_sigma(node1, node2), 
+                             true);
+        
+        U = R::unif_rand();
+        if(std::log(U) < log_prob) {
+          interactions(node1, node2) = proposed_state;
+          interactions(node2, node1) = proposed_state;
+        }
+      }
+  }
+  return interactions;
+}
+
+// --------------------------------------------------------- (updating both edge and interaction params)
+
+
 // ----------------------------------------------------------------------------|
 // MH algorithm to sample from the cull-conditional of an edge + interaction 
 //  pair (using a cauchy prior) --using caching
@@ -583,7 +993,7 @@ List metropolis_edge_interaction_pair_cauchy_caching(NumericMatrix interactions,
                                                      IntegerMatrix observations,
                                                      IntegerVector no_categories,
                                                      NumericMatrix proposal_sd,
-                                                     double cauchy_scale,
+                                                     double scale,
                                                      IntegerMatrix index,
                                                      int no_interactions,
                                                      int no_persons,
@@ -614,7 +1024,7 @@ List metropolis_edge_interaction_pair_cauchy_caching(NumericMatrix interactions,
                                                     proposed_state,
                                                     current_state,
                                                     rest_matrix);
-      log_prob += R::dcauchy(proposed_state, 0.0, cauchy_scale, true);
+      log_prob += R::dcauchy(proposed_state, 0.0, scale, true);
       log_prob -= R::dnorm(proposed_state,
                            current_state,
                            proposal_sd(node1, node2),
@@ -654,7 +1064,7 @@ List metropolis_edge_interaction_pair_cauchy_caching(NumericMatrix interactions,
                            proposed_state,
                            proposal_sd(node1, node2),
                            true);
-      log_prob -= R::dcauchy(current_state, 0.0, cauchy_scale,  true);
+      log_prob -= R::dcauchy(current_state, 0.0, scale,  true);
       
       //U = R::unif_rand();    
       U = R::runif(0, 1);
@@ -689,7 +1099,7 @@ List metropolis_edge_interaction_pair_cauchy_nocaching(NumericMatrix interaction
                                                        IntegerMatrix observations,
                                                        IntegerVector no_categories,
                                                        NumericMatrix proposal_sd,
-                                                       double cauchy_scale,
+                                                       double scale,
                                                        IntegerMatrix index,
                                                        int no_interactions, 
                                                        int no_persons,
@@ -720,7 +1130,7 @@ List metropolis_edge_interaction_pair_cauchy_nocaching(NumericMatrix interaction
                                                       node2,
                                                       proposed_state,
                                                       current_state);
-      log_prob += R::dcauchy(proposed_state, 0.0, cauchy_scale, true);
+      log_prob += R::dcauchy(proposed_state, 0.0, scale, true);
       log_prob -= R::dnorm(proposed_state,
                            current_state,
                            proposal_sd(node1, node2),
@@ -751,7 +1161,7 @@ List metropolis_edge_interaction_pair_cauchy_nocaching(NumericMatrix interaction
                            proposed_state,
                            proposal_sd(node1, node2),
                            true);
-      log_prob -= R::dcauchy(current_state, 0.0, cauchy_scale,  true);
+      log_prob -= R::dcauchy(current_state, 0.0, scale,  true);
       
       U = R::unif_rand();    
       if(std::log(U) < log_prob) {
@@ -765,6 +1175,397 @@ List metropolis_edge_interaction_pair_cauchy_nocaching(NumericMatrix interaction
   return List::create(Named("interactions") = interactions,
                       Named("gamma") = gamma);
 }
+
+
+// ----------------------------------------------------------------------------|
+// MH algorithm to sample from the cull-conditional of an edge + interaction 
+//  pair (using a laplace prior) --using caching
+// ----------------------------------------------------------------------------|
+List metropolis_edge_interaction_pair_laplace_caching(NumericMatrix interactions, 
+                                                     NumericMatrix thresholds,
+                                                     IntegerMatrix gamma,
+                                                     IntegerMatrix observations,
+                                                     IntegerVector no_categories,
+                                                     NumericMatrix proposal_sd,
+                                                     double scale,
+                                                     IntegerMatrix index,
+                                                     int no_interactions,
+                                                     int no_persons,
+                                                     NumericMatrix rest_matrix) {
+  double proposed_state;
+  double current_state;
+  double log_prob;
+  double U;
+  
+  int node1;
+  int node2;
+  
+  for(int cntr = 0; cntr < no_interactions; cntr ++) {
+    node1 = index(cntr, 1) - 1;
+    node2 = index(cntr, 2) - 1;
+    if(gamma(node1, node2) == 0) {
+      current_state = 0.0;
+      proposed_state = R::rnorm(current_state,
+                                proposal_sd(node1, node2));
+      
+      log_prob = log_pseudolikelihood_ratio_caching(interactions,
+                                                    thresholds,
+                                                    observations,
+                                                    no_categories,
+                                                    no_persons,
+                                                    node1,
+                                                    node2,
+                                                    proposed_state,
+                                                    current_state,
+                                                    rest_matrix);
+      log_prob += dlap_1(proposed_state, 0.0, scale, true);
+      log_prob -= R::dnorm(proposed_state,
+                           current_state,
+                           proposal_sd(node1, node2),
+                           true);
+      
+      //U = R::unif_rand(); 
+      U = R::runif(0, 1);
+      if(std::log(U) < log_prob) {
+        gamma(node1, node2) = 1;
+        gamma(node2, node1) = 1;
+        interactions(node1, node2) = proposed_state;
+        interactions(node2, node1) = proposed_state;
+        
+        //Update the matrix of rest scores
+        for(int person = 0; person < no_persons; person++) {
+          rest_matrix(person, node1) += observations(person, node2) * 
+            (proposed_state - current_state);
+          rest_matrix(person, node2) += observations(person, node1) * 
+            (proposed_state - current_state);
+        }
+      }
+    } else {
+      current_state = interactions(node1, node2);
+      proposed_state = 0.0;
+      
+      log_prob = log_pseudolikelihood_ratio_caching(interactions,
+                                                    thresholds,
+                                                    observations,
+                                                    no_categories,
+                                                    no_persons,
+                                                    node1,
+                                                    node2,
+                                                    proposed_state,
+                                                    current_state,
+                                                    rest_matrix);
+      log_prob += R::dnorm(current_state,
+                           proposed_state,
+                           proposal_sd(node1, node2),
+                           true);
+      log_prob -= dlap_1(current_state, 0.0, scale,  true);
+      
+      //U = R::unif_rand();    
+      U = R::runif(0, 1);
+      if(std::log(U) < log_prob) {
+        gamma(node1, node2) = 0;
+        gamma(node2, node1) = 0;
+        interactions(node1, node2) = 0.0;
+        interactions(node2, node1) = 0.0;
+        
+        //Update the matrix of rest scores
+        for(int person = 0; person < no_persons; person++) {
+          rest_matrix(person, node1) += observations(person, node2) * 
+            (proposed_state - current_state);
+          rest_matrix(person, node2) += observations(person, node1) * 
+            (proposed_state - current_state);
+        }
+      }
+    }
+  }
+  return List::create(Named("interactions") = interactions,
+                      Named("gamma") = gamma,
+                      Named("rest_matrix") = rest_matrix);
+}
+
+// ----------------------------------------------------------------------------|
+// MH algorithm to sample from the cull-conditional of an edge + interaction 
+//  pair (using a laplace prior) --no caching
+// ----------------------------------------------------------------------------|
+List metropolis_edge_interaction_pair_laplace_nocaching(NumericMatrix interactions, 
+                                                       NumericMatrix thresholds,
+                                                       IntegerMatrix gamma,
+                                                       IntegerMatrix observations,
+                                                       IntegerVector no_categories,
+                                                       NumericMatrix proposal_sd,
+                                                       double scale,
+                                                       IntegerMatrix index,
+                                                       int no_interactions, 
+                                                       int no_persons,
+                                                       int no_nodes) {
+  double proposed_state;
+  double current_state;
+  double log_prob;
+  double U;
+  
+  int node1;
+  int node2;
+  
+  for(int cntr = 0; cntr < no_interactions; cntr ++) {
+    node1 = index(cntr, 1) - 1;
+    node2 = index(cntr, 2) - 1;
+    if(gamma(node1, node2) == 0) {
+      current_state = interactions(node1, node2);
+      proposed_state = R::rnorm(current_state,
+                                proposal_sd(node1, node2));
+      
+      log_prob = log_pseudolikelihood_ratio_nocaching(interactions,
+                                                      thresholds,
+                                                      observations,
+                                                      no_categories,
+                                                      no_persons,
+                                                      no_nodes,
+                                                      node1,
+                                                      node2,
+                                                      proposed_state,
+                                                      current_state);
+      log_prob += dlap_1(proposed_state, 0.0, scale, true);
+      log_prob -= R::dnorm(proposed_state,
+                           current_state,
+                           proposal_sd(node1, node2),
+                           true);
+      
+      U = R::unif_rand();    
+      if(std::log(U) < log_prob) {
+        gamma(node1, node2) = 1;
+        gamma(node2, node1) = 1;
+        interactions(node1, node2) = proposed_state;
+        interactions(node2, node1) = proposed_state;
+      }
+    } else {
+      current_state = interactions(node1, node2);
+      proposed_state = 0.0;
+      
+      log_prob = log_pseudolikelihood_ratio_nocaching(interactions,
+                                                      thresholds,
+                                                      observations,
+                                                      no_categories,
+                                                      no_persons,
+                                                      no_nodes,
+                                                      node1,
+                                                      node2,
+                                                      proposed_state,
+                                                      current_state);
+      log_prob += R::dnorm(current_state,
+                           proposed_state,
+                           proposal_sd(node1, node2),
+                           true);
+      log_prob -= dlap_1(current_state, 0.0, scale,  true);
+      
+      U = R::unif_rand();    
+      if(std::log(U) < log_prob) {
+        gamma(node1, node2) = 0;
+        gamma(node2, node1) = 0;
+        interactions(node1, node2) = 0.0;
+        interactions(node2, node1) = 0.0;
+      }
+    }
+  }
+  return List::create(Named("interactions") = interactions,
+                      Named("gamma") = gamma);
+}
+
+
+// ----------------------------------------------------------------------------|
+// MH algorithm to sample from the cull-conditional of an edge + interaction 
+//  pair (using a horseshoe prior) --using caching
+// ----------------------------------------------------------------------------|
+List metropolis_edge_interaction_pair_horseshoe_caching(NumericMatrix interactions, 
+                                                      NumericMatrix thresholds,
+                                                      IntegerMatrix gamma,
+                                                      IntegerMatrix observations,
+                                                      IntegerVector no_categories,
+                                                      NumericMatrix proposal_sd,
+                                                      double scale,
+                                                      double tau,
+                                                      IntegerMatrix index,
+                                                      int no_interactions,
+                                                      int no_persons,
+                                                      NumericMatrix rest_matrix) {
+  double proposed_state;
+  double current_state;
+  double log_prob;
+  double U;
+  
+  int node1;
+  int node2;
+  
+  for(int cntr = 0; cntr < no_interactions; cntr ++) {
+    node1 = index(cntr, 1) - 1;
+    node2 = index(cntr, 2) - 1;
+    if(gamma(node1, node2) == 0) {
+      current_state = 0.0;
+      proposed_state = R::rnorm(current_state,
+                                proposal_sd(node1, node2));
+      
+      log_prob = log_pseudolikelihood_ratio_caching(interactions,
+                                                    thresholds,
+                                                    observations,
+                                                    no_categories,
+                                                    no_persons,
+                                                    node1,
+                                                    node2,
+                                                    proposed_state,
+                                                    current_state,
+                                                    rest_matrix);
+      log_prob += dh_1(proposed_state, scale, tau, true);
+      log_prob -= R::dnorm(proposed_state,
+                           current_state,
+                           proposal_sd(node1, node2),
+                           true);
+      
+      //U = R::unif_rand(); 
+      U = R::runif(0, 1);
+      if(std::log(U) < log_prob) {
+        gamma(node1, node2) = 1;
+        gamma(node2, node1) = 1;
+        interactions(node1, node2) = proposed_state;
+        interactions(node2, node1) = proposed_state;
+        
+        //Update the matrix of rest scores
+        for(int person = 0; person < no_persons; person++) {
+          rest_matrix(person, node1) += observations(person, node2) * 
+            (proposed_state - current_state);
+          rest_matrix(person, node2) += observations(person, node1) * 
+            (proposed_state - current_state);
+        }
+      }
+    } else {
+      current_state = interactions(node1, node2);
+      proposed_state = 0.0;
+      
+      log_prob = log_pseudolikelihood_ratio_caching(interactions,
+                                                    thresholds,
+                                                    observations,
+                                                    no_categories,
+                                                    no_persons,
+                                                    node1,
+                                                    node2,
+                                                    proposed_state,
+                                                    current_state,
+                                                    rest_matrix);
+      log_prob += R::dnorm(current_state,
+                           proposed_state,
+                           proposal_sd(node1, node2),
+                           true);
+      log_prob -= dh_1(current_state, scale, tau,  true);
+      
+      //U = R::unif_rand();    
+      U = R::runif(0, 1);
+      if(std::log(U) < log_prob) {
+        gamma(node1, node2) = 0;
+        gamma(node2, node1) = 0;
+        interactions(node1, node2) = 0.0;
+        interactions(node2, node1) = 0.0;
+        
+        //Update the matrix of rest scores
+        for(int person = 0; person < no_persons; person++) {
+          rest_matrix(person, node1) += observations(person, node2) * 
+            (proposed_state - current_state);
+          rest_matrix(person, node2) += observations(person, node1) * 
+            (proposed_state - current_state);
+        }
+      }
+    }
+  }
+  return List::create(Named("interactions") = interactions,
+                      Named("gamma") = gamma,
+                      Named("rest_matrix") = rest_matrix);
+}
+
+// ----------------------------------------------------------------------------|
+// MH algorithm to sample from the cull-conditional of an edge + interaction 
+//  pair (using a horseshoe prior) --no caching
+// ----------------------------------------------------------------------------|
+List metropolis_edge_interaction_pair_horseshoe_nocaching(NumericMatrix interactions, 
+                                                        NumericMatrix thresholds,
+                                                        IntegerMatrix gamma,
+                                                        IntegerMatrix observations,
+                                                        IntegerVector no_categories,
+                                                        NumericMatrix proposal_sd,
+                                                        double scale,
+                                                        double tau,
+                                                        IntegerMatrix index,
+                                                        int no_interactions, 
+                                                        int no_persons,
+                                                        int no_nodes) {
+  double proposed_state;
+  double current_state;
+  double log_prob;
+  double U;
+  
+  int node1;
+  int node2;
+  
+  for(int cntr = 0; cntr < no_interactions; cntr ++) {
+    node1 = index(cntr, 1) - 1;
+    node2 = index(cntr, 2) - 1;
+    if(gamma(node1, node2) == 0) {
+      current_state = interactions(node1, node2);
+      proposed_state = R::rnorm(current_state,
+                                proposal_sd(node1, node2));
+      
+      log_prob = log_pseudolikelihood_ratio_nocaching(interactions,
+                                                      thresholds,
+                                                      observations,
+                                                      no_categories,
+                                                      no_persons,
+                                                      no_nodes,
+                                                      node1,
+                                                      node2,
+                                                      proposed_state,
+                                                      current_state);
+      log_prob += dh_1(proposed_state, scale, tau, true);
+      log_prob -= R::dnorm(proposed_state,
+                           current_state,
+                           proposal_sd(node1, node2),
+                           true);
+      
+      U = R::unif_rand();    
+      if(std::log(U) < log_prob) {
+        gamma(node1, node2) = 1;
+        gamma(node2, node1) = 1;
+        interactions(node1, node2) = proposed_state;
+        interactions(node2, node1) = proposed_state;
+      }
+    } else {
+      current_state = interactions(node1, node2);
+      proposed_state = 0.0;
+      
+      log_prob = log_pseudolikelihood_ratio_nocaching(interactions,
+                                                      thresholds,
+                                                      observations,
+                                                      no_categories,
+                                                      no_persons,
+                                                      no_nodes,
+                                                      node1,
+                                                      node2,
+                                                      proposed_state,
+                                                      current_state);
+      log_prob += R::dnorm(current_state,
+                           proposed_state,
+                           proposal_sd(node1, node2),
+                           true);
+      log_prob -= dh_1(current_state, scale, tau,  true);
+      
+      U = R::unif_rand();    
+      if(std::log(U) < log_prob) {
+        gamma(node1, node2) = 0;
+        gamma(node2, node1) = 0;
+        interactions(node1, node2) = 0.0;
+        interactions(node2, node1) = 0.0;
+      }
+    }
+  }
+  return List::create(Named("interactions") = interactions,
+                      Named("gamma") = gamma);
+}
+
 
 // ----------------------------------------------------------------------------|
 // MH algorithm to sample from the cull-conditional of an edge + interaction 
@@ -972,12 +1773,248 @@ List metropolis_edge_interaction_pair_unitinfo_nocaching(NumericMatrix interacti
 }
 
 // ----------------------------------------------------------------------------|
+// MH algorithm to sample from the cull-conditional of an edge + interaction 
+//  pair (using an extended unit information prior) --using caching
+// ----------------------------------------------------------------------------|
+List metropolis_edge_interaction_pair_unitinfo_plus_caching(NumericMatrix interactions, 
+                                                       NumericMatrix thresholds,
+                                                       IntegerMatrix gamma,
+                                                       IntegerMatrix observations,
+                                                       IntegerVector no_categories,
+                                                       NumericMatrix proposal_sd,
+                                                       NumericMatrix unit_info,
+                                                       IntegerMatrix index,
+                                                       int no_interactions,
+                                                       int no_persons,
+                                                       NumericMatrix rest_matrix) {
+  double proposed_state;
+  double current_state;
+  double log_prob;
+  double U;
+  
+  // import the functions that calculate the conditional means and variances 
+  
+  Function conditional_interactions_mu("conditional_interactions_mu");
+  Function conditional_interactions_sigma("conditional_interactions_sigma");
+  
+  // calculate the conditional means and variances 
+  NumericMatrix cond_mu = conditional_interactions_mu(unit_info, 
+                                                      interactions, 
+                                                      observations);
+  
+  NumericMatrix cond_sigma = conditional_interactions_sigma(unit_info, 
+                                                            interactions, 
+                                                            observations);
+  
+  
+  int node1;
+  int node2;
+  
+  for(int cntr = 0; cntr < no_interactions; cntr ++) {
+    node1 = index(cntr, 1) - 1;
+    node2 = index(cntr, 2) - 1;
+    if(gamma(node1, node2) == 0) {
+      current_state = 0.0;
+      proposed_state = R::rnorm(current_state,
+                                proposal_sd(node1, node2));
+      
+      log_prob = log_pseudolikelihood_ratio_caching(interactions,
+                                                    thresholds,
+                                                    observations,
+                                                    no_categories,
+                                                    no_persons, 
+                                                    node1,
+                                                    node2,
+                                                    proposed_state,
+                                                    current_state,
+                                                    rest_matrix);
+      log_prob += R::dnorm(proposed_state, 
+                           cond_mu(node1, node2), 
+                           cond_sigma(node1, node2), 
+                           true);
+      log_prob -= R::dnorm(proposed_state,
+                           current_state,
+                           proposal_sd(node1, node2),
+                           true);
+      
+      
+      //U = R::unif_rand();    
+      U = R::runif(0, 1);
+      if(std::log(U) < log_prob) {
+        gamma(node1, node2) = 1;
+        gamma(node2, node1) = 1;
+        interactions(node1, node2) = proposed_state;
+        interactions(node2, node1) = proposed_state;
+        
+        //Update the matrix of rest scores
+        for(int person = 0; person < no_persons; person++) {
+          rest_matrix(person, node1) += observations(person, node2) * 
+            (proposed_state - current_state);
+          rest_matrix(person, node2) += observations(person, node1) * 
+            (proposed_state - current_state);
+        }
+      }
+    } else {
+      current_state = interactions(node1, node2);
+      proposed_state = 0.0;
+      
+      log_prob = log_pseudolikelihood_ratio_caching(interactions,
+                                                    thresholds,
+                                                    observations,
+                                                    no_categories,
+                                                    no_persons,
+                                                    node1,
+                                                    node2,
+                                                    proposed_state,
+                                                    current_state,
+                                                    rest_matrix);
+      log_prob += R::dnorm(current_state,
+                           proposed_state,
+                           proposal_sd(node1, node2),
+                           true);
+      log_prob -= R::dnorm(current_state, 
+                           cond_mu(node1, node2), 
+                           cond_sigma(node1, node2), 
+                           true);
+      
+      //U = R::unif_rand(); 
+      U = R::runif(0, 1);
+      if(std::log(U) < log_prob) {
+        gamma(node1, node2) = 0;
+        gamma(node2, node1) = 0;
+        interactions(node1, node2) = 0.0;
+        interactions(node2, node1) = 0.0;
+        
+        //Update the matrix of rest scores
+        for(int person = 0; person < no_persons; person++) {
+          rest_matrix(person, node1) += observations(person, node2) * 
+            (proposed_state - current_state);
+          rest_matrix(person, node2) += observations(person, node1) * 
+            (proposed_state - current_state);
+        }
+      }
+    }
+  }
+  return List::create(Named("interactions") = interactions,
+                      Named("gamma") = gamma,
+                      Named("rest_matrix") = rest_matrix);
+}
+
+// ----------------------------------------------------------------------------|
+// MH algorithm to sample from the cull-conditional of an edge + interaction 
+//  pair (using an extended unit information prior) --no caching
+// ----------------------------------------------------------------------------|
+List metropolis_edge_interaction_pair_unitinfo_plus_nocaching(NumericMatrix interactions, 
+                                                         NumericMatrix thresholds,
+                                                         IntegerMatrix gamma,
+                                                         IntegerMatrix observations,
+                                                         IntegerVector no_categories,
+                                                         NumericMatrix proposal_sd,
+                                                         NumericMatrix unit_info,
+                                                         IntegerMatrix index,
+                                                         int no_interactions, 
+                                                         int no_persons,
+                                                         int no_nodes) {
+  double proposed_state;
+  double current_state;
+  double log_prob;
+  double U;
+  
+  // import the functions that calculate the conditional means and variances 
+  
+  Function conditional_interactions_mu("conditional_interactions_mu");
+  Function conditional_interactions_sigma("conditional_interactions_sigma");
+  
+  // calculate the conditional means and variances 
+  NumericMatrix cond_mu = conditional_interactions_mu(unit_info, 
+                                                      interactions, 
+                                                      observations);
+  
+  NumericMatrix cond_sigma = conditional_interactions_sigma(unit_info, 
+                                                            interactions, 
+                                                            observations);
+  
+  int node1;
+  int node2;
+  
+  for(int cntr = 0; cntr < no_interactions; cntr ++) {
+    node1 = index(cntr, 1) - 1;
+    node2 = index(cntr, 2) - 1;
+    if(gamma(node1, node2) == 0) {
+      current_state = interactions(node1, node2);
+      proposed_state = R::rnorm(current_state,
+                                proposal_sd(node1, node2));
+      
+      log_prob = log_pseudolikelihood_ratio_nocaching(interactions,
+                                                      thresholds,
+                                                      observations,
+                                                      no_categories,
+                                                      no_persons,
+                                                      no_nodes,
+                                                      node1,
+                                                      node2,
+                                                      proposed_state,
+                                                      current_state);
+      log_prob += R::dnorm(proposed_state, 
+                           cond_mu(node1, node2), 
+                           cond_sigma(node1, node2), 
+                           true);
+      log_prob -= R::dnorm(proposed_state,
+                           current_state,
+                           proposal_sd(node1, node2),
+                           true);
+      
+      U = R::unif_rand();    
+      if(std::log(U) < log_prob) {
+        gamma(node1, node2) = 1;
+        gamma(node2, node1) = 1;
+        interactions(node1, node2) = proposed_state;
+        interactions(node2, node1) = proposed_state;
+      }
+    } else {
+      current_state = interactions(node1, node2);
+      proposed_state = 0.0;
+      
+      log_prob = log_pseudolikelihood_ratio_nocaching(interactions,
+                                                      thresholds,
+                                                      observations,
+                                                      no_categories,
+                                                      no_persons,
+                                                      no_nodes,
+                                                      node1,
+                                                      node2,
+                                                      proposed_state,
+                                                      current_state);
+      log_prob += R::dnorm(current_state,
+                           proposed_state,
+                           proposal_sd(node1, node2),
+                           true);
+      log_prob -= R::dnorm(current_state, 
+                           cond_mu(node1, node2), 
+                           cond_sigma(node1, node2), 
+                           true);
+      
+      U = R::unif_rand();    
+      if(std::log(U) < log_prob) {
+        gamma(node1, node2) = 0;
+        gamma(node2, node1) = 0;
+        interactions(node1, node2) = proposed_state;
+        interactions(node2, node1) = proposed_state;
+      }
+    }
+  }
+  return List::create(Named("interactions") = interactions,
+                      Named("gamma") = gamma);
+}
+
+// ----------------------------------------------------------------------------|
 // Gibbs step with caching
 // ----------------------------------------------------------------------------|
 List gibbs_step_caching(IntegerMatrix observations,
                         IntegerVector no_categories,
                         String interaction_prior,
-                        double cauchy_scale,
+                        double scale,
+                        double tau,
                         NumericMatrix unit_info,
                         NumericMatrix proposal_sd,
                         IntegerMatrix index,
@@ -1001,7 +2038,7 @@ List gibbs_step_caching(IntegerMatrix observations,
                                                                observations,
                                                                no_categories,
                                                                proposal_sd,
-                                                               cauchy_scale,
+                                                               scale,
                                                                index,
                                                                no_interactions,
                                                                no_persons,
@@ -1010,6 +2047,44 @@ List gibbs_step_caching(IntegerMatrix observations,
     NumericMatrix interactions = out["interactions"];
     NumericMatrix rest_matrix = out["rest_matrix"];
   }
+  
+  
+  if(interaction_prior == "Laplace") {
+    List out = metropolis_edge_interaction_pair_laplace_caching(interactions, 
+                                                               thresholds,
+                                                               gamma,
+                                                               observations,
+                                                               no_categories,
+                                                               proposal_sd,
+                                                               scale,
+                                                               index,
+                                                               no_interactions,
+                                                               no_persons,
+                                                               rest_matrix);
+    IntegerMatrix gamma = out["gamma"];
+    NumericMatrix interactions = out["interactions"];
+    NumericMatrix rest_matrix = out["rest_matrix"];
+  }
+  
+  if(interaction_prior == "Horseshoe") {
+    
+    List out = metropolis_edge_interaction_pair_horseshoe_caching(interactions, 
+                                                                thresholds,
+                                                                gamma,
+                                                                observations,
+                                                                no_categories,
+                                                                proposal_sd,
+                                                                scale,
+                                                                tau, 
+                                                                index,
+                                                                no_interactions,
+                                                                no_persons,
+                                                                rest_matrix);
+    IntegerMatrix gamma = out["gamma"];
+    NumericMatrix interactions = out["interactions"];
+    NumericMatrix rest_matrix = out["rest_matrix"];
+  }
+  
   if(interaction_prior ==  "UnitInfo") {
     List out = metropolis_edge_interaction_pair_unitinfo_caching(interactions,
                                                                  thresholds,
@@ -1027,6 +2102,24 @@ List gibbs_step_caching(IntegerMatrix observations,
     NumericMatrix rest_matrix = out["rest_matrix"];
   }
   
+  if(interaction_prior ==  "UnitInfo+") {
+    List out = metropolis_edge_interaction_pair_unitinfo_plus_caching(interactions,
+                                                                 thresholds,
+                                                                 gamma,
+                                                                 observations,
+                                                                 no_categories,
+                                                                 proposal_sd,
+                                                                 unit_info,
+                                                                 index, 
+                                                                 no_interactions, 
+                                                                 no_persons,
+                                                                 rest_matrix);
+    IntegerMatrix gamma = out["gamma"];
+    NumericMatrix interactions = out["interactions"];
+    NumericMatrix rest_matrix = out["rest_matrix"];
+  }
+  
+  
   //Update interactions (within model move)
   if(interaction_prior == "Cauchy") {
     List out = metropolis_interactions_cauchy_caching(interactions,
@@ -1035,13 +2128,45 @@ List gibbs_step_caching(IntegerMatrix observations,
                                                       observations,
                                                       no_categories,
                                                       proposal_sd,
-                                                      cauchy_scale,
+                                                      scale,
                                                       no_persons,
                                                       no_nodes,
                                                       rest_matrix);
     NumericMatrix interactions = out["interactions"];
     NumericMatrix rest_matrix = out["rest_matrix"];
   }
+  
+  if(interaction_prior == "Laplace") {
+    List out = metropolis_interactions_laplace_caching(interactions,
+                                                      thresholds,
+                                                      gamma,
+                                                      observations,
+                                                      no_categories,
+                                                      proposal_sd,
+                                                      scale,
+                                                      no_persons,
+                                                      no_nodes,
+                                                      rest_matrix);
+    NumericMatrix interactions = out["interactions"];
+    NumericMatrix rest_matrix = out["rest_matrix"];
+  }
+  
+  if(interaction_prior == "Horseshoe") {
+    List out = metropolis_interactions_horseshoe_caching(interactions,
+                                                       thresholds,
+                                                       gamma,
+                                                       observations,
+                                                       no_categories,
+                                                       proposal_sd,
+                                                       scale,
+                                                       tau,
+                                                       no_persons,
+                                                       no_nodes,
+                                                       rest_matrix);
+    NumericMatrix interactions = out["interactions"];
+    NumericMatrix rest_matrix = out["rest_matrix"];
+  }
+  
   if(interaction_prior == "UnitInfo") {
     List out = metropolis_interactions_unitinfo_caching(interactions,
                                                         thresholds,
@@ -1055,7 +2180,23 @@ List gibbs_step_caching(IntegerMatrix observations,
                                                         rest_matrix);
     NumericMatrix interactions = out["interactions"];
     NumericMatrix rest_matrix = out["rest_matrix"];
+  } 
+  
+  if(interaction_prior == "UnitInfo+") {
+    List out = metropolis_interactions_unitinfo_plus_caching(interactions,
+                                                        thresholds,
+                                                        gamma,
+                                                        observations,
+                                                        no_categories,
+                                                        proposal_sd,
+                                                        unit_info,
+                                                        no_persons,
+                                                        no_nodes,
+                                                        rest_matrix);
+    NumericMatrix interactions = out["interactions"];
+    NumericMatrix rest_matrix = out["rest_matrix"];
   }  
+  
   
   //Update thresholds
   thresholds = metropolis_thresholds_caching(interactions,
@@ -1081,7 +2222,8 @@ List gibbs_step_caching(IntegerMatrix observations,
 List gibbs_step_nocaching(IntegerMatrix observations,
                           IntegerVector no_categories,
                           String interaction_prior,
-                          double cauchy_scale,
+                          double scale,
+                          double tau,
                           NumericMatrix unit_info,
                           NumericMatrix proposal_sd,
                           IntegerMatrix index,
@@ -1104,7 +2246,7 @@ List gibbs_step_nocaching(IntegerMatrix observations,
                                                                  observations,
                                                                  no_categories,
                                                                  proposal_sd,
-                                                                 cauchy_scale,
+                                                                 scale,
                                                                  index,
                                                                  no_interactions,
                                                                  no_persons,
@@ -1112,6 +2254,40 @@ List gibbs_step_nocaching(IntegerMatrix observations,
     IntegerMatrix gamma = out["gamma"];
     NumericMatrix interactions = out["interactions"];
   }
+  
+  if(interaction_prior == "Laplace") {
+    List out = metropolis_edge_interaction_pair_laplace_nocaching(interactions, 
+                                                                 thresholds,
+                                                                 gamma,
+                                                                 observations,
+                                                                 no_categories,
+                                                                 proposal_sd,
+                                                                 scale,
+                                                                 index,
+                                                                 no_interactions,
+                                                                 no_persons,
+                                                                 no_nodes);
+    IntegerMatrix gamma = out["gamma"];
+    NumericMatrix interactions = out["interactions"];
+  }
+  
+  if(interaction_prior == "Horseshoe") {
+    List out = metropolis_edge_interaction_pair_horseshoe_nocaching(interactions, 
+                                                                 thresholds,
+                                                                 gamma,
+                                                                 observations,
+                                                                 no_categories,
+                                                                 proposal_sd,
+                                                                 scale,
+                                                                 tau,
+                                                                 index,
+                                                                 no_interactions,
+                                                                 no_persons,
+                                                                 no_nodes);
+    IntegerMatrix gamma = out["gamma"];
+    NumericMatrix interactions = out["interactions"];
+  }
+  
   if(interaction_prior ==  "UnitInfo") {
     List out = metropolis_edge_interaction_pair_unitinfo_nocaching(interactions,
                                                                    thresholds,
@@ -1128,6 +2304,23 @@ List gibbs_step_nocaching(IntegerMatrix observations,
     NumericMatrix interactions = out["interactions"];
   }
   
+  if(interaction_prior ==  "UnitInfo+") {
+    List out = metropolis_edge_interaction_pair_unitinfo_plus_nocaching(interactions,
+                                                                   thresholds,
+                                                                   gamma,
+                                                                   observations,
+                                                                   no_categories,
+                                                                   proposal_sd,
+                                                                   unit_info,
+                                                                   index, 
+                                                                   no_interactions, 
+                                                                   no_persons,
+                                                                   no_nodes);
+    IntegerMatrix gamma = out["gamma"];
+    NumericMatrix interactions = out["interactions"];
+  }
+  
+  
   //Update interactions (within model move)
   if(interaction_prior == "Cauchy") {
     interactions = metropolis_interactions_cauchy_nocaching(interactions,
@@ -1136,10 +2329,36 @@ List gibbs_step_nocaching(IntegerMatrix observations,
                                                             observations,
                                                             no_categories,
                                                             proposal_sd,
-                                                            cauchy_scale,
+                                                            scale,
                                                             no_persons,
                                                             no_nodes);
   }
+    
+    if(interaction_prior == "Laplace") {
+      interactions = metropolis_interactions_laplace_nocaching(interactions,
+                                                              thresholds,
+                                                              gamma,
+                                                              observations,
+                                                              no_categories,
+                                                              proposal_sd,
+                                                              scale,
+                                                              no_persons,
+                                                              no_nodes);
+    }
+      
+      if(interaction_prior == "Horseshoe") {
+        interactions = metropolis_interactions_horseshoe_nocaching(interactions,
+                                                                 thresholds,
+                                                                 gamma,
+                                                                 observations,
+                                                                 no_categories,
+                                                                 proposal_sd,
+                                                                 scale,
+                                                                 tau,
+                                                                 no_persons,
+                                                                 no_nodes);
+  }
+      
   if(interaction_prior == "UnitInfo") {
     interactions = metropolis_interactions_unitinfo_nocaching(interactions,
                                                               thresholds,
@@ -1151,6 +2370,19 @@ List gibbs_step_nocaching(IntegerMatrix observations,
                                                               no_persons,
                                                               no_nodes);
   }  
+  
+  if(interaction_prior == "UnitInfo+") {
+    interactions = metropolis_interactions_unitinfo_plus_nocaching(interactions,
+                                                              thresholds,
+                                                              gamma,
+                                                              observations,
+                                                              no_categories,
+                                                              proposal_sd,
+                                                              unit_info,
+                                                              no_persons,
+                                                              no_nodes);
+  }  
+  
   
   //Update thresholds
   thresholds = metropolis_thresholds_nocaching(interactions,
@@ -1178,7 +2410,8 @@ List gibbs_sampler(IntegerMatrix observations,
                    NumericMatrix thresholds,
                    IntegerVector no_categories,
                    String interaction_prior,
-                   double cauchy_scale,
+                   double scale,
+                   double tau,
                    NumericMatrix unit_info,
                    NumericMatrix proposal_sd,
                    IntegerMatrix Index,
@@ -1265,7 +2498,8 @@ List gibbs_sampler(IntegerMatrix observations,
       List out = gibbs_step_caching(observations,
                                     no_categories,
                                     interaction_prior,
-                                    cauchy_scale,
+                                    scale,
+                                    tau,
                                     unit_info,
                                     proposal_sd,
                                     index,
@@ -1290,7 +2524,8 @@ List gibbs_sampler(IntegerMatrix observations,
       List out = gibbs_step_nocaching(observations,
                                       no_categories,
                                       interaction_prior,
-                                      cauchy_scale,
+                                      scale,
+                                      tau,
                                       unit_info,
                                       proposal_sd,
                                       index,
@@ -1338,7 +2573,8 @@ List gibbs_sampler(IntegerMatrix observations,
       List out = gibbs_step_caching(observations,
                                     no_categories,
                                     interaction_prior,
-                                    cauchy_scale,
+                                    scale,
+                                    tau,
                                     unit_info,
                                     proposal_sd,
                                     index,
@@ -1363,7 +2599,8 @@ List gibbs_sampler(IntegerMatrix observations,
       List out = gibbs_step_nocaching(observations,
                                       no_categories,
                                       interaction_prior,
-                                      cauchy_scale,
+                                      scale,
+                                      tau,
                                       unit_info,
                                       proposal_sd,
                                       index,
