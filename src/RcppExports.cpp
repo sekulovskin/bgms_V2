@@ -145,8 +145,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // gradient_interactions_pseudoposterior_cauchy
-NumericVector gradient_interactions_pseudoposterior_cauchy(NumericMatrix interactions, NumericMatrix thresholds, IntegerMatrix observations, IntegerVector no_categories, double cauchy_scale);
-RcppExport SEXP _bgms_gradient_interactions_pseudoposterior_cauchy(SEXP interactionsSEXP, SEXP thresholdsSEXP, SEXP observationsSEXP, SEXP no_categoriesSEXP, SEXP cauchy_scaleSEXP) {
+NumericVector gradient_interactions_pseudoposterior_cauchy(NumericMatrix interactions, NumericMatrix thresholds, IntegerMatrix observations, IntegerVector no_categories, double scale);
+RcppExport SEXP _bgms_gradient_interactions_pseudoposterior_cauchy(SEXP interactionsSEXP, SEXP thresholdsSEXP, SEXP observationsSEXP, SEXP no_categoriesSEXP, SEXP scaleSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -154,8 +154,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< NumericMatrix >::type thresholds(thresholdsSEXP);
     Rcpp::traits::input_parameter< IntegerMatrix >::type observations(observationsSEXP);
     Rcpp::traits::input_parameter< IntegerVector >::type no_categories(no_categoriesSEXP);
-    Rcpp::traits::input_parameter< double >::type cauchy_scale(cauchy_scaleSEXP);
-    rcpp_result_gen = Rcpp::wrap(gradient_interactions_pseudoposterior_cauchy(interactions, thresholds, observations, no_categories, cauchy_scale));
+    Rcpp::traits::input_parameter< double >::type scale(scaleSEXP);
+    rcpp_result_gen = Rcpp::wrap(gradient_interactions_pseudoposterior_cauchy(interactions, thresholds, observations, no_categories, scale));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -219,8 +219,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // hessian_interactions_pseudoposterior_cauchy
-NumericMatrix hessian_interactions_pseudoposterior_cauchy(NumericMatrix interactions, NumericMatrix thresholds, IntegerMatrix observations, IntegerVector no_categories, double cauchy_scale);
-RcppExport SEXP _bgms_hessian_interactions_pseudoposterior_cauchy(SEXP interactionsSEXP, SEXP thresholdsSEXP, SEXP observationsSEXP, SEXP no_categoriesSEXP, SEXP cauchy_scaleSEXP) {
+NumericMatrix hessian_interactions_pseudoposterior_cauchy(NumericMatrix interactions, NumericMatrix thresholds, IntegerMatrix observations, IntegerVector no_categories, double scale);
+RcppExport SEXP _bgms_hessian_interactions_pseudoposterior_cauchy(SEXP interactionsSEXP, SEXP thresholdsSEXP, SEXP observationsSEXP, SEXP no_categoriesSEXP, SEXP scaleSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -228,8 +228,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< NumericMatrix >::type thresholds(thresholdsSEXP);
     Rcpp::traits::input_parameter< IntegerMatrix >::type observations(observationsSEXP);
     Rcpp::traits::input_parameter< IntegerVector >::type no_categories(no_categoriesSEXP);
-    Rcpp::traits::input_parameter< double >::type cauchy_scale(cauchy_scaleSEXP);
-    rcpp_result_gen = Rcpp::wrap(hessian_interactions_pseudoposterior_cauchy(interactions, thresholds, observations, no_categories, cauchy_scale));
+    Rcpp::traits::input_parameter< double >::type scale(scaleSEXP);
+    rcpp_result_gen = Rcpp::wrap(hessian_interactions_pseudoposterior_cauchy(interactions, thresholds, observations, no_categories, scale));
     return rcpp_result_gen;
 END_RCPP
 }

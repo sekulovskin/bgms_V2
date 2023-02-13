@@ -69,7 +69,8 @@ mppe = function(x,
                 interactions) {
 
   #Check prior set-up for the interaction parameters ---------------------------
-  if(interaction_prior != "Cauchy" & interaction_prior != "UnitInfo")
+  if(interaction_prior != "Cauchy" & interaction_prior != "UnitInfo"  & interaction_prior != "Laplace" 
+     & interaction_prior != "Horseshoe" & interaction_prior != "UnitInfo+")
     stop("For the interaction effects we currently only have implemented the 
      Cauchy prior and the Unit Information prior. Please select one.")
   if(interaction_prior == "Cauchy") {
@@ -450,6 +451,7 @@ mppe = function(x,
                                               observations = x,
                                               no_categories, 
                                               scale = scale,
+                                              tau = tau,
                                               threshold_alpha,
                                               threshold_beta)
     

@@ -70,7 +70,7 @@
 bgms = function(x,
                 no_iterations = 1e5,
                 burnin = 1e3,
-                interaction_prior = c("UnitInfo", "Cauchy"),
+                interaction_prior = c("UnitInfo", "Cauchy", "Laplace", "Horseshoe", "UnitInfo+"),
                 scale = 2.5,
                 threshold_alpha = 1,
                 threshold_beta = 1,

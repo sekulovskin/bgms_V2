@@ -33,8 +33,8 @@ gradient_interactions_pseudoposterior_normal <- function(interactions, threshold
     .Call(`_bgms_gradient_interactions_pseudoposterior_normal`, interactions, thresholds, observations, no_categories, interaction_var)
 }
 
-gradient_interactions_pseudoposterior_cauchy <- function(interactions, thresholds, observations, no_categories, cauchy_scale) {
-    .Call(`_bgms_gradient_interactions_pseudoposterior_cauchy`, interactions, thresholds, observations, no_categories, cauchy_scale)
+gradient_interactions_pseudoposterior_cauchy <- function(interactions, thresholds, observations, no_categories, scale) {
+    .Call(`_bgms_gradient_interactions_pseudoposterior_cauchy`, interactions, thresholds, observations, no_categories, scale)
 }
 
 hessian_thresholds_pseudolikelihood <- function(interactions, thresholds, observations, no_categories) {
@@ -53,8 +53,8 @@ hessian_interactions_pseudoposterior_normal <- function(interactions, thresholds
     .Call(`_bgms_hessian_interactions_pseudoposterior_normal`, interactions, thresholds, observations, no_categories, interaction_var)
 }
 
-hessian_interactions_pseudoposterior_cauchy <- function(interactions, thresholds, observations, no_categories, cauchy_scale) {
-    .Call(`_bgms_hessian_interactions_pseudoposterior_cauchy`, interactions, thresholds, observations, no_categories, cauchy_scale)
+hessian_interactions_pseudoposterior_cauchy <- function(interactions, thresholds, observations, no_categories, scale) {
+    .Call(`_bgms_hessian_interactions_pseudoposterior_cauchy`, interactions, thresholds, observations, no_categories, scale)
 }
 
 hessian_crossparameters <- function(interactions, thresholds, observations, no_categories) {

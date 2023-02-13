@@ -230,7 +230,7 @@ NumericVector gradient_interactions_pseudoposterior_cauchy(NumericMatrix interac
                                                            NumericMatrix thresholds,
                                                            IntegerMatrix observations,
                                                            IntegerVector no_categories,
-                                                           double cauchy_scale) {
+                                                           double scale) {
   
   NumericVector gradient = gradient_interactions_pseudolikelihood(interactions,
                                                                   thresholds,
@@ -245,7 +245,7 @@ NumericVector gradient_interactions_pseudoposterior_cauchy(NumericMatrix interac
       counter += 1;
       //Contribution of the Cauchy prior density -------------------------------
       gradient[counter] -= 2 * interactions(s, t) / 
-        (interactions(s, t) * interactions(s, t) + cauchy_scale * cauchy_scale);
+        (interactions(s, t) * interactions(s, t) + scale * scale);
     }
   }
   return gradient;
@@ -651,7 +651,7 @@ NumericMatrix hessian_interactions_pseudoposterior_cauchy(NumericMatrix interact
                                                           NumericMatrix thresholds,
                                                           IntegerMatrix observations,
                                                           IntegerVector no_categories,
-                                                          double cauchy_scale) {
+                                                          double scale) {
   
   NumericMatrix hessian = hessian_interactions_pseudolikelihood(interactions, 
                                                                 thresholds,
@@ -677,9 +677,9 @@ NumericMatrix hessian_interactions_pseudoposterior_cauchy(NumericMatrix interact
     for(int t = s + 1; t < no_nodes; t++) {
       //Contribution of the prior density --------------------------------------
       double tmp_m =  interactions(s, t) * interactions(s, t) - 
-        cauchy_scale * cauchy_scale;
+        scale * scale;
       double tmp_p = interactions(s, t) * interactions(s, t) + 
-        cauchy_scale * cauchy_scale;
+        scale * scale;
       hessian(index(s, t), index(s, t)) += 2 * tmp_m / (tmp_p * tmp_p);
     }
   }
