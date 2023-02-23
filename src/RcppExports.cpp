@@ -57,8 +57,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // gibbs_sampler
-List gibbs_sampler(IntegerMatrix observations, IntegerMatrix gamma, NumericMatrix interactions, NumericMatrix thresholds, IntegerVector no_categories, String interaction_prior, double scale, double tau, NumericMatrix unit_info, NumericMatrix proposal_sd, IntegerMatrix Index, int no_iterations, int burnin, IntegerMatrix n_cat_obs, double threshold_alpha, double threshold_beta, bool save, bool caching, bool display_progress);
-RcppExport SEXP _bgms_gibbs_sampler(SEXP observationsSEXP, SEXP gammaSEXP, SEXP interactionsSEXP, SEXP thresholdsSEXP, SEXP no_categoriesSEXP, SEXP interaction_priorSEXP, SEXP scaleSEXP, SEXP tauSEXP, SEXP unit_infoSEXP, SEXP proposal_sdSEXP, SEXP IndexSEXP, SEXP no_iterationsSEXP, SEXP burninSEXP, SEXP n_cat_obsSEXP, SEXP threshold_alphaSEXP, SEXP threshold_betaSEXP, SEXP saveSEXP, SEXP cachingSEXP, SEXP display_progressSEXP) {
+List gibbs_sampler(IntegerMatrix observations, IntegerMatrix gamma, NumericMatrix interactions, NumericMatrix thresholds, IntegerVector no_categories, String interaction_prior, double scale, double tau, double prop_rel_edges, NumericMatrix unit_info, NumericMatrix proposal_sd, IntegerMatrix Index, int no_iterations, int burnin, IntegerMatrix n_cat_obs, double threshold_alpha, double threshold_beta, bool save, bool caching, bool display_progress);
+RcppExport SEXP _bgms_gibbs_sampler(SEXP observationsSEXP, SEXP gammaSEXP, SEXP interactionsSEXP, SEXP thresholdsSEXP, SEXP no_categoriesSEXP, SEXP interaction_priorSEXP, SEXP scaleSEXP, SEXP tauSEXP, SEXP prop_rel_edgesSEXP, SEXP unit_infoSEXP, SEXP proposal_sdSEXP, SEXP IndexSEXP, SEXP no_iterationsSEXP, SEXP burninSEXP, SEXP n_cat_obsSEXP, SEXP threshold_alphaSEXP, SEXP threshold_betaSEXP, SEXP saveSEXP, SEXP cachingSEXP, SEXP display_progressSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -70,6 +70,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< String >::type interaction_prior(interaction_priorSEXP);
     Rcpp::traits::input_parameter< double >::type scale(scaleSEXP);
     Rcpp::traits::input_parameter< double >::type tau(tauSEXP);
+    Rcpp::traits::input_parameter< double >::type prop_rel_edges(prop_rel_edgesSEXP);
     Rcpp::traits::input_parameter< NumericMatrix >::type unit_info(unit_infoSEXP);
     Rcpp::traits::input_parameter< NumericMatrix >::type proposal_sd(proposal_sdSEXP);
     Rcpp::traits::input_parameter< IntegerMatrix >::type Index(IndexSEXP);
@@ -81,7 +82,7 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< bool >::type save(saveSEXP);
     Rcpp::traits::input_parameter< bool >::type caching(cachingSEXP);
     Rcpp::traits::input_parameter< bool >::type display_progress(display_progressSEXP);
-    rcpp_result_gen = Rcpp::wrap(gibbs_sampler(observations, gamma, interactions, thresholds, no_categories, interaction_prior, scale, tau, unit_info, proposal_sd, Index, no_iterations, burnin, n_cat_obs, threshold_alpha, threshold_beta, save, caching, display_progress));
+    rcpp_result_gen = Rcpp::wrap(gibbs_sampler(observations, gamma, interactions, thresholds, no_categories, interaction_prior, scale, tau, prop_rel_edges, unit_info, proposal_sd, Index, no_iterations, burnin, n_cat_obs, threshold_alpha, threshold_beta, save, caching, display_progress));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -327,22 +328,26 @@ BEGIN_RCPP
 END_RCPP
 }
 // dh
-double dh(double interaction, double scale, double tau, bool log);
-RcppExport SEXP _bgms_dh(SEXP interactionSEXP, SEXP scaleSEXP, SEXP tauSEXP, SEXP logSEXP) {
+double dh(double interaction, double scale, double tau, double prop_rel_edges, bool log, IntegerVector no_categories, double no_persons, double no_interactions);
+RcppExport SEXP _bgms_dh(SEXP interactionSEXP, SEXP scaleSEXP, SEXP tauSEXP, SEXP prop_rel_edgesSEXP, SEXP logSEXP, SEXP no_categoriesSEXP, SEXP no_personsSEXP, SEXP no_interactionsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< double >::type interaction(interactionSEXP);
     Rcpp::traits::input_parameter< double >::type scale(scaleSEXP);
     Rcpp::traits::input_parameter< double >::type tau(tauSEXP);
+    Rcpp::traits::input_parameter< double >::type prop_rel_edges(prop_rel_edgesSEXP);
     Rcpp::traits::input_parameter< bool >::type log(logSEXP);
-    rcpp_result_gen = Rcpp::wrap(dh(interaction, scale, tau, log));
+    Rcpp::traits::input_parameter< IntegerVector >::type no_categories(no_categoriesSEXP);
+    Rcpp::traits::input_parameter< double >::type no_persons(no_personsSEXP);
+    Rcpp::traits::input_parameter< double >::type no_interactions(no_interactionsSEXP);
+    rcpp_result_gen = Rcpp::wrap(dh(interaction, scale, tau, prop_rel_edges, log, no_categories, no_persons, no_interactions));
     return rcpp_result_gen;
 END_RCPP
 }
 // log_unnormalized_pseudoposterior_horseshoe
-double log_unnormalized_pseudoposterior_horseshoe(NumericMatrix interactions, NumericMatrix thresholds, IntegerMatrix observations, double scale, double tau, IntegerVector no_categories, double threshold_alpha, double threshold_beta);
-RcppExport SEXP _bgms_log_unnormalized_pseudoposterior_horseshoe(SEXP interactionsSEXP, SEXP thresholdsSEXP, SEXP observationsSEXP, SEXP scaleSEXP, SEXP tauSEXP, SEXP no_categoriesSEXP, SEXP threshold_alphaSEXP, SEXP threshold_betaSEXP) {
+double log_unnormalized_pseudoposterior_horseshoe(NumericMatrix interactions, NumericMatrix thresholds, IntegerMatrix observations, double scale, double tau, double prop_rel_edges, IntegerVector no_categories, double threshold_alpha, double threshold_beta, double no_persons, double no_interactions);
+RcppExport SEXP _bgms_log_unnormalized_pseudoposterior_horseshoe(SEXP interactionsSEXP, SEXP thresholdsSEXP, SEXP observationsSEXP, SEXP scaleSEXP, SEXP tauSEXP, SEXP prop_rel_edgesSEXP, SEXP no_categoriesSEXP, SEXP threshold_alphaSEXP, SEXP threshold_betaSEXP, SEXP no_personsSEXP, SEXP no_interactionsSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -351,10 +356,13 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< IntegerMatrix >::type observations(observationsSEXP);
     Rcpp::traits::input_parameter< double >::type scale(scaleSEXP);
     Rcpp::traits::input_parameter< double >::type tau(tauSEXP);
+    Rcpp::traits::input_parameter< double >::type prop_rel_edges(prop_rel_edgesSEXP);
     Rcpp::traits::input_parameter< IntegerVector >::type no_categories(no_categoriesSEXP);
     Rcpp::traits::input_parameter< double >::type threshold_alpha(threshold_alphaSEXP);
     Rcpp::traits::input_parameter< double >::type threshold_beta(threshold_betaSEXP);
-    rcpp_result_gen = Rcpp::wrap(log_unnormalized_pseudoposterior_horseshoe(interactions, thresholds, observations, scale, tau, no_categories, threshold_alpha, threshold_beta));
+    Rcpp::traits::input_parameter< double >::type no_persons(no_personsSEXP);
+    Rcpp::traits::input_parameter< double >::type no_interactions(no_interactionsSEXP);
+    rcpp_result_gen = Rcpp::wrap(log_unnormalized_pseudoposterior_horseshoe(interactions, thresholds, observations, scale, tau, prop_rel_edges, no_categories, threshold_alpha, threshold_beta, no_persons, no_interactions));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -385,7 +393,7 @@ static const R_CallMethodDef CallEntries[] = {
     {"_bgms_sample_omrf_gibbs", (DL_FUNC) &_bgms_sample_omrf_gibbs, 6},
     {"_bgms_em_gamma", (DL_FUNC) &_bgms_em_gamma, 5},
     {"_bgms_em_interaction_var", (DL_FUNC) &_bgms_em_interaction_var, 5},
-    {"_bgms_gibbs_sampler", (DL_FUNC) &_bgms_gibbs_sampler, 19},
+    {"_bgms_gibbs_sampler", (DL_FUNC) &_bgms_gibbs_sampler, 20},
     {"_bgms_gradient_thresholds_pseudolikelihood", (DL_FUNC) &_bgms_gradient_thresholds_pseudolikelihood, 4},
     {"_bgms_gradient_thresholds_pseudoposterior", (DL_FUNC) &_bgms_gradient_thresholds_pseudoposterior, 6},
     {"_bgms_gradient_interactions_pseudolikelihood", (DL_FUNC) &_bgms_gradient_interactions_pseudolikelihood, 4},
@@ -402,8 +410,8 @@ static const R_CallMethodDef CallEntries[] = {
     {"_bgms_log_unnormalized_pseudoposterior_cauchy", (DL_FUNC) &_bgms_log_unnormalized_pseudoposterior_cauchy, 7},
     {"_bgms_dlap", (DL_FUNC) &_bgms_dlap, 4},
     {"_bgms_log_unnormalized_pseudoposterior_laplace", (DL_FUNC) &_bgms_log_unnormalized_pseudoposterior_laplace, 7},
-    {"_bgms_dh", (DL_FUNC) &_bgms_dh, 4},
-    {"_bgms_log_unnormalized_pseudoposterior_horseshoe", (DL_FUNC) &_bgms_log_unnormalized_pseudoposterior_horseshoe, 8},
+    {"_bgms_dh", (DL_FUNC) &_bgms_dh, 8},
+    {"_bgms_log_unnormalized_pseudoposterior_horseshoe", (DL_FUNC) &_bgms_log_unnormalized_pseudoposterior_horseshoe, 11},
     {"_bgms_emvs_log_unnormalized_pseudoposterior", (DL_FUNC) &_bgms_emvs_log_unnormalized_pseudoposterior, 12},
     {NULL, NULL, 0}
 };

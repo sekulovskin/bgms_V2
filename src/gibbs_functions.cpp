@@ -30,15 +30,33 @@ double dlap_1(double interaction,
 // ----------------------------------------------------------------------------|
 
 double dh_1(double interaction,
-            double scale = 1.0,
-            double tau = 1.0,
-            bool log = true) {
+          double scale = 1, 
+          double tau = 1, 
+          double prop_rel_edges = 1,         // it doesn't allow me not to give it default arguments 
+          bool log = false, 
+          IntegerVector no_categories = 1,
+          double no_persons = 1, 
+          double no_interactions = 1) {
   
   double p = R::runif(0, 1);
-  double lambda = scale * std::tan((3.141593 * p)/2);
+  double lambda = 1 * std::tan((3.141593 * p)/2); //I made the scale to always equal 1
+  
+  double rel_edges =  prop_rel_edges*no_interactions;
+  
+  int max_no_categories = max(no_categories);
+  double tau_0 = (rel_edges / (no_interactions - rel_edges)) * (max_no_categories / sqrt(no_persons));
+  
+    if (tau == 1) {
+      tau = std::abs(R::rnorm(0, tau_0)); 
+    } else if (tau == 2) {
+      tau = tau_0 * std::tan((3.141593 * p)/2);  
+    } else if (tau == 3) {
+      tau = 1 * std::tan((3.141593 * p)/2); //I made the scale to always equal 1
+    }
+  
   double sd =  lambda* tau;
   double logden = R::dnorm(interaction, 0, sd, log = log);
-  return(logden);
+  return logden;
 }
 
 
@@ -616,9 +634,11 @@ List metropolis_interactions_horseshoe_caching(NumericMatrix interactions,
                                              NumericMatrix proposal_sd,
                                              double scale,
                                              double tau,
+                                             double prop_rel_edges,
                                              int no_persons,
                                              int no_nodes,
-                                             NumericMatrix rest_matrix) {
+                                             NumericMatrix rest_matrix,
+                                             int no_interactions) {
   double proposed_state;
   double current_state;
   double log_prob;
@@ -641,8 +661,24 @@ List metropolis_interactions_horseshoe_caching(NumericMatrix interactions,
                                                       proposed_state,
                                                       current_state, 
                                                       rest_matrix);
-        log_prob += dh_1(proposed_state, scale, tau, true);
-        log_prob -= dh_1(current_state, scale, tau, true);
+        log_prob += dh_1(proposed_state, 
+                         scale, 
+                         tau, 
+                         prop_rel_edges, 
+                         true, 
+                         no_categories, 
+                         no_persons, 
+                         no_interactions);
+        
+        
+        log_prob -= dh_1(current_state, 
+                         scale, 
+                         tau, 
+                         prop_rel_edges, 
+                         true, 
+                         no_categories, 
+                         no_persons, 
+                         no_interactions);
         
         //U = R::unif_rand();
         U = R::runif(0, 1);
@@ -676,8 +712,10 @@ NumericMatrix metropolis_interactions_horseshoe_nocaching(NumericMatrix interact
                                                         NumericMatrix proposal_sd,
                                                         double scale,
                                                         double tau,
+                                                        double prop_rel_edges,
                                                         int no_persons,
-                                                        int no_nodes) {
+                                                        int no_nodes,
+                                                        int no_interactions) {
   double proposed_state;
   double current_state;
   double log_prob;
@@ -700,8 +738,22 @@ NumericMatrix metropolis_interactions_horseshoe_nocaching(NumericMatrix interact
                                                         node2,
                                                         proposed_state,
                                                         current_state);
-        log_prob += dh_1(proposed_state, scale, tau, true);
-        log_prob -= dh_1(current_state, scale, tau, true);
+        log_prob += dh_1(proposed_state, 
+                         scale, 
+                         tau, 
+                         prop_rel_edges, 
+                         true, 
+                         no_categories, 
+                         no_persons, 
+                         no_interactions);
+        log_prob -= dh_1(current_state, 
+                         scale, 
+                         tau, 
+                         prop_rel_edges, 
+                         true, 
+                         no_categories, 
+                         no_persons, 
+                         no_interactions);
         
         U = R::unif_rand();
         if(std::log(U) < log_prob) {
@@ -860,12 +912,10 @@ List metropolis_interactions_unitinfo_plus_caching(NumericMatrix interactions,
   
   // calculate the conditional means and variances 
   NumericMatrix cond_mu = conditional_interactions_mu(unit_info, 
-                                                      interactions, 
-                                                      observations);
+                                                      interactions);
   
   NumericMatrix cond_sigma = conditional_interactions_sigma(unit_info, 
-                                                            interactions, 
-                                                            observations);
+                                                            interactions);
   
   for(int node1 = 0; node1 <  no_nodes - 1; node1++) {
     for(int node2 = node1 + 1; node2 <  no_nodes; node2++)
@@ -937,12 +987,10 @@ NumericMatrix metropolis_interactions_unitinfo_plus_nocaching(NumericMatrix inte
   
   // calculate the conditional means and variances 
   NumericMatrix cond_mu = conditional_interactions_mu(unit_info, 
-                                                      interactions, 
-                                                      observations);
+                                                      interactions);
   
   NumericMatrix cond_sigma = conditional_interactions_sigma(unit_info, 
-                                                            interactions, 
-                                                            observations);
+                                                            interactions);
   
   for(int node1 = 0; node1 <  no_nodes - 1; node1++) {
     for(int node2 = node1 + 1; node2 <  no_nodes; node2++)
@@ -1383,6 +1431,7 @@ List metropolis_edge_interaction_pair_horseshoe_caching(NumericMatrix interactio
                                                       NumericMatrix proposal_sd,
                                                       double scale,
                                                       double tau,
+                                                      double prop_rel_edges,
                                                       IntegerMatrix index,
                                                       int no_interactions,
                                                       int no_persons,
@@ -1413,7 +1462,15 @@ List metropolis_edge_interaction_pair_horseshoe_caching(NumericMatrix interactio
                                                     proposed_state,
                                                     current_state,
                                                     rest_matrix);
-      log_prob += dh_1(proposed_state, scale, tau, true);
+      log_prob += dh_1(proposed_state, 
+                       scale, 
+                       tau, 
+                       prop_rel_edges, 
+                       true, 
+                       no_categories, 
+                       no_persons, 
+                       no_interactions);
+      
       log_prob -= R::dnorm(proposed_state,
                            current_state,
                            proposal_sd(node1, node2),
@@ -1453,7 +1510,14 @@ List metropolis_edge_interaction_pair_horseshoe_caching(NumericMatrix interactio
                            proposed_state,
                            proposal_sd(node1, node2),
                            true);
-      log_prob -= dh_1(current_state, scale, tau,  true);
+      log_prob -= dh_1(current_state, 
+                       scale, 
+                       tau, 
+                       prop_rel_edges, 
+                       true, 
+                       no_categories, 
+                       no_persons, 
+                       no_interactions);
       
       //U = R::unif_rand();    
       U = R::runif(0, 1);
@@ -1490,6 +1554,7 @@ List metropolis_edge_interaction_pair_horseshoe_nocaching(NumericMatrix interact
                                                         NumericMatrix proposal_sd,
                                                         double scale,
                                                         double tau,
+                                                        double prop_rel_edges,
                                                         IntegerMatrix index,
                                                         int no_interactions, 
                                                         int no_persons,
@@ -1520,7 +1585,14 @@ List metropolis_edge_interaction_pair_horseshoe_nocaching(NumericMatrix interact
                                                       node2,
                                                       proposed_state,
                                                       current_state);
-      log_prob += dh_1(proposed_state, scale, tau, true);
+      log_prob += dh_1(proposed_state, 
+                       scale, 
+                       tau, 
+                       prop_rel_edges, 
+                       true, 
+                       no_categories, 
+                       no_persons, 
+                       no_interactions);
       log_prob -= R::dnorm(proposed_state,
                            current_state,
                            proposal_sd(node1, node2),
@@ -1551,7 +1623,14 @@ List metropolis_edge_interaction_pair_horseshoe_nocaching(NumericMatrix interact
                            proposed_state,
                            proposal_sd(node1, node2),
                            true);
-      log_prob -= dh_1(current_state, scale, tau,  true);
+      log_prob -= dh_1(current_state, 
+                       scale, 
+                       tau, 
+                       prop_rel_edges, 
+                       true, 
+                       no_categories, 
+                       no_persons, 
+                       no_interactions);
       
       U = R::unif_rand();    
       if(std::log(U) < log_prob) {
@@ -1799,12 +1878,10 @@ List metropolis_edge_interaction_pair_unitinfo_plus_caching(NumericMatrix intera
   
   // calculate the conditional means and variances 
   NumericMatrix cond_mu = conditional_interactions_mu(unit_info, 
-                                                      interactions, 
-                                                      observations);
+                                                      interactions);
   
   NumericMatrix cond_sigma = conditional_interactions_sigma(unit_info, 
-                                                            interactions, 
-                                                            observations);
+                                                            interactions);
   
   
   int node1;
@@ -1927,12 +2004,10 @@ List metropolis_edge_interaction_pair_unitinfo_plus_nocaching(NumericMatrix inte
   
   // calculate the conditional means and variances 
   NumericMatrix cond_mu = conditional_interactions_mu(unit_info, 
-                                                      interactions, 
-                                                      observations);
+                                                      interactions);
   
   NumericMatrix cond_sigma = conditional_interactions_sigma(unit_info, 
-                                                            interactions, 
-                                                            observations);
+                                                            interactions);
   
   int node1;
   int node2;
@@ -2015,6 +2090,7 @@ List gibbs_step_caching(IntegerMatrix observations,
                         String interaction_prior,
                         double scale,
                         double tau,
+                        double prop_rel_edges,
                         NumericMatrix unit_info,
                         NumericMatrix proposal_sd,
                         IntegerMatrix index,
@@ -2076,6 +2152,7 @@ List gibbs_step_caching(IntegerMatrix observations,
                                                                 proposal_sd,
                                                                 scale,
                                                                 tau, 
+                                                                prop_rel_edges,
                                                                 index,
                                                                 no_interactions,
                                                                 no_persons,
@@ -2160,9 +2237,11 @@ List gibbs_step_caching(IntegerMatrix observations,
                                                        proposal_sd,
                                                        scale,
                                                        tau,
+                                                       prop_rel_edges,
                                                        no_persons,
                                                        no_nodes,
-                                                       rest_matrix);
+                                                       rest_matrix,
+                                                       no_interactions);
     NumericMatrix interactions = out["interactions"];
     NumericMatrix rest_matrix = out["rest_matrix"];
   }
@@ -2224,6 +2303,7 @@ List gibbs_step_nocaching(IntegerMatrix observations,
                           String interaction_prior,
                           double scale,
                           double tau,
+                          double prop_rel_edges,
                           NumericMatrix unit_info,
                           NumericMatrix proposal_sd,
                           IntegerMatrix index,
@@ -2280,6 +2360,7 @@ List gibbs_step_nocaching(IntegerMatrix observations,
                                                                  proposal_sd,
                                                                  scale,
                                                                  tau,
+                                                                 prop_rel_edges,
                                                                  index,
                                                                  no_interactions,
                                                                  no_persons,
@@ -2355,8 +2436,10 @@ List gibbs_step_nocaching(IntegerMatrix observations,
                                                                  proposal_sd,
                                                                  scale,
                                                                  tau,
+                                                                 prop_rel_edges,
                                                                  no_persons,
-                                                                 no_nodes);
+                                                                 no_nodes,
+                                                                 no_interactions);
   }
       
   if(interaction_prior == "UnitInfo") {
@@ -2412,6 +2495,7 @@ List gibbs_sampler(IntegerMatrix observations,
                    String interaction_prior,
                    double scale,
                    double tau,
+                   double prop_rel_edges,
                    NumericMatrix unit_info,
                    NumericMatrix proposal_sd,
                    IntegerMatrix Index,
@@ -2500,6 +2584,7 @@ List gibbs_sampler(IntegerMatrix observations,
                                     interaction_prior,
                                     scale,
                                     tau,
+                                    prop_rel_edges,
                                     unit_info,
                                     proposal_sd,
                                     index,
@@ -2526,6 +2611,7 @@ List gibbs_sampler(IntegerMatrix observations,
                                       interaction_prior,
                                       scale,
                                       tau,
+                                      prop_rel_edges,
                                       unit_info,
                                       proposal_sd,
                                       index,
@@ -2575,6 +2661,7 @@ List gibbs_sampler(IntegerMatrix observations,
                                     interaction_prior,
                                     scale,
                                     tau,
+                                    prop_rel_edges,
                                     unit_info,
                                     proposal_sd,
                                     index,
@@ -2601,6 +2688,7 @@ List gibbs_sampler(IntegerMatrix observations,
                                       interaction_prior,
                                       scale,
                                       tau,
+                                      prop_rel_edges,
                                       unit_info,
                                       proposal_sd,
                                       index,

@@ -176,17 +176,34 @@ double log_unnormalized_pseudoposterior_laplace(NumericMatrix interactions,
 
 // [[Rcpp::export]]
 double dh(double interaction,
-          double scale = 1.0,
-          double tau = 1.0,
-          bool log = true) {
+            double scale = 1, 
+            double tau = 1, 
+            double prop_rel_edges = 1,         // it doesn't allow me not to give it default arguments 
+            bool log = false, 
+            IntegerVector no_categories = 1,
+            double no_persons = 1, 
+            double no_interactions = 1) {
   
   double p = R::runif(0, 1);
-  double lambda = scale * std::tan((3.141593 * p)/2);
+  double lambda = 1 * std::tan((3.141593 * p)/2); //I made the scale to always equal 1
+  
+  double rel_edges =  prop_rel_edges*no_interactions;
+  
+  int max_no_categories = max(no_categories);
+  double tau_0 = (rel_edges / (no_interactions - rel_edges)) * (max_no_categories / sqrt(no_persons));
+  
+  if (tau == 1) {
+    tau = std::abs(R::rnorm(0, tau_0)); 
+  } else if (tau == 2) {
+    tau = tau_0 * std::tan((3.141593 * p)/2);  
+  } else if (tau == 3) {
+    tau = 1 * std::tan((3.141593 * p)/2); //I made the scale to always equal 1
+  }
+  
   double sd =  lambda* tau;
   double logden = R::dnorm(interaction, 0, sd, log = log);
-  return(logden);
+  return logden;
 }
-
 
 // [[Rcpp::export]]
 double log_unnormalized_pseudoposterior_horseshoe(NumericMatrix interactions,
@@ -194,9 +211,12 @@ double log_unnormalized_pseudoposterior_horseshoe(NumericMatrix interactions,
                                                   IntegerMatrix observations,
                                                   double scale,
                                                   double tau,
+                                                  double prop_rel_edges,
                                                   IntegerVector no_categories,
                                                   double threshold_alpha = 1.0,
-                                                  double threshold_beta = 1.0) {
+                                                  double threshold_beta = 1.0,
+                                                  double no_persons = 1, 
+                                                  double no_interactions = 1) {
   int no_nodes = observations.ncol();
   double unn_pseudo_post = log_pseudolikelihood(interactions,
                                                 thresholds,
@@ -209,7 +229,11 @@ double log_unnormalized_pseudoposterior_horseshoe(NumericMatrix interactions,
       unn_pseudo_post += dh(interactions(s, t),
                             scale,
                             tau,
-                            true);
+                            prop_rel_edges, 
+                            true, 
+                            no_categories, 
+                            no_persons, 
+                            no_interactions);
     }
   }
   

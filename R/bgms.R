@@ -29,11 +29,16 @@
 #' (\code{interaction_prior = "UnitInfo"}) and the Cauchy prior 
 #' (\code{interaction_prior = "Cauchy"}). Defaults to \code{"UnitInfo"}.
 #' 
-#' @param scale The scale of the Cauchy prior for interactions. Defaults 
-#' to \code{2.5}. 
+#' @param scale The scale of the Cauchy and Laplace priors, as well as the scale for the
+#' local shrinkage parameter of the Horseshoe prior. Defaults 
+#' to \code{1}. 
+#' 
+#' @param prop_rel_edges The a priori proportion of relevant edges that the
+#' researcher believes to be present in the network. 
 #' 
 #' @param threshold_alpha,threshold_beta The shape parameters of the Beta-prime 
-#' prior for the thresholds. Defaults to \code{1}.
+#' prior for the thresholds. Defaults to \code{1}.Defaults 
+#' to \code{0.5}. 
 #' 
 #' @param save Should the function collect and return all samples from the 
 #' Gibbs sampler (\code{save = TRUE})? Or should it only return the 
@@ -75,6 +80,7 @@ bgms = function(x,
                 threshold_alpha = 1,
                 threshold_beta = 1,
                 tau = 1,
+                prop_rel_edges = 0.5,
                 save = FALSE,
                 caching = TRUE,
                 display_progress = FALSE) {
@@ -108,6 +114,20 @@ bgms = function(x,
   if(nrow(x) < 2)
     stop("The matrix x should have more than one observation (rows).")
   
+  
+  #Check HS arguments------------------------------------------------------------
+  if (!(tau == 1 | tau == 2 | tau == 3)) 
+    stop("You have chosen an invalid option for the computation of the global 
+         shrinkage paramater for the Horseshoe slab. Currently, there are three options: 
+         1 = Half Normal distribution with a scale defined by the total number of relevant 
+         edges, suppiled in the prop_rel_edges argument; 2 = Half Cauchy distribution with 
+         a scale defined by the total number of relevant edges, suppiled in the 
+         prop_rel_edges argument 3 = Half Cauchy distribution with a scale of 1.")
+  if(prop_rel_edges > 1 | prop_rel_edges < 0)
+  stop("The supplied value for the argument prop_rel_edges should be between 0 and 1, 
+        indicating the proportion of relevant edges that the users a priori believes 
+        should be included in the network.")
+  
   #Format the data input -------------------------------------------------------
   data = reformat_data(x = x)
   x = data$x
@@ -123,7 +143,9 @@ bgms = function(x,
     pps = try(mppe(x = x, 
                    no_categories = no_categories, 
                    interaction_prior = interaction_prior, 
-                   scale = scale), 
+                   scale = scale,
+                   tau = tau,
+                   prop_rel_edges = prop_rel_edges), 
               silent = TRUE)
   } else {
     pps = try(mppe(x = x, 
@@ -209,6 +231,7 @@ bgms = function(x,
                       interaction_prior = interaction_prior,
                       scale = scale,
                       tau,
+                      prop_rel_edges = prop_rel_edges,
                       unit_info = unit_info,
                       proposal_sd = proposal_sd,
                       Index = Index,

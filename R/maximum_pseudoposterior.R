@@ -59,8 +59,9 @@
 mppe = function(x, 
                 no_categories, 
                 interaction_prior = "Cauchy",
-                scale = 2.5,
+                scale = 1,
                 tau = 1,
+                prop_rel_edges = 0.5,
                 threshold_alpha = 1,
                 threshold_beta = 1,
                 convergence_criterion = sqrt(.Machine$double.eps),
@@ -140,7 +141,7 @@ mppe = function(x,
                                                      thresholds = mpl$thresholds, 
                                                      observations = x,
                                                      no_categories)
-    varcov <- -solve(hessian)
+    varcov <- -solve(hessian) # 
     varcov <- no_persons * varcov
     hessian = diag(-solve(hessian))
     pr_var = no_persons * hessian
@@ -449,11 +450,14 @@ mppe = function(x,
       log_unnormalized_pseudoposterior_horseshoe(interactions, 
                                               thresholds, 
                                               observations = x,
-                                              no_categories, 
                                               scale = scale,
                                               tau = tau,
-                                              threshold_alpha,
-                                              threshold_beta)
+                                              prop_rel_edges = prop_rel_edges,
+                                              no_categories = no_categories ,
+                                              threshold_alpha = threshold_alpha,
+                                              threshold_beta = threshold_beta,
+                                              no_persons = no_persons,
+                                              no_interactions = no_interactions)
     
     hessian = matrix(data = NA, 
                      nrow = no_parameters,
@@ -476,8 +480,8 @@ mppe = function(x,
       
       gradient[-c(1:no_thresholds)] =
         gradient_interactions_pseudoposterior_cauchy(interactions = interactions,   #THIS!!!
-                                                     thresholds = thresholds, 
-                                                     observations = x,
+                                                     thresholds = thresholds,       
+                                                     observations = x,            # Don't foget to adjust the arguments! 
                                                      no_categories, 
                                                      scale = scale)
       

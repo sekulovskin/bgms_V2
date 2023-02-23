@@ -13,8 +13,8 @@ em_interaction_var <- function(gamma, slab_var, theta, xi, no_persons) {
     .Call(`_bgms_em_interaction_var`, gamma, slab_var, theta, xi, no_persons)
 }
 
-gibbs_sampler <- function(observations, gamma, interactions, thresholds, no_categories, interaction_prior, scale, tau, unit_info, proposal_sd, Index, no_iterations, burnin, n_cat_obs, threshold_alpha, threshold_beta, save = FALSE, caching = TRUE, display_progress = FALSE) {
-    .Call(`_bgms_gibbs_sampler`, observations, gamma, interactions, thresholds, no_categories, interaction_prior, scale, tau, unit_info, proposal_sd, Index, no_iterations, burnin, n_cat_obs, threshold_alpha, threshold_beta, save, caching, display_progress)
+gibbs_sampler <- function(observations, gamma, interactions, thresholds, no_categories, interaction_prior, scale, tau, prop_rel_edges, unit_info, proposal_sd, Index, no_iterations, burnin, n_cat_obs, threshold_alpha, threshold_beta, save = FALSE, caching = TRUE, display_progress = FALSE) {
+    .Call(`_bgms_gibbs_sampler`, observations, gamma, interactions, thresholds, no_categories, interaction_prior, scale, tau, prop_rel_edges, unit_info, proposal_sd, Index, no_iterations, burnin, n_cat_obs, threshold_alpha, threshold_beta, save, caching, display_progress)
 }
 
 gradient_thresholds_pseudolikelihood <- function(interactions, thresholds, observations, no_categories) {
@@ -81,12 +81,12 @@ log_unnormalized_pseudoposterior_laplace <- function(interactions, thresholds, o
     .Call(`_bgms_log_unnormalized_pseudoposterior_laplace`, interactions, thresholds, observations, scale, no_categories, threshold_alpha, threshold_beta)
 }
 
-dh <- function(interaction, scale = 1.0, tau = 1.0, log = TRUE) {
-    .Call(`_bgms_dh`, interaction, scale, tau, log)
+dh <- function(interaction, scale = 1, tau = 1, prop_rel_edges = 1, log = FALSE, no_categories = 1L, no_persons = 1, no_interactions = 1) {
+    .Call(`_bgms_dh`, interaction, scale, tau, prop_rel_edges, log, no_categories, no_persons, no_interactions)
 }
 
-log_unnormalized_pseudoposterior_horseshoe <- function(interactions, thresholds, observations, scale, tau, no_categories, threshold_alpha = 1.0, threshold_beta = 1.0) {
-    .Call(`_bgms_log_unnormalized_pseudoposterior_horseshoe`, interactions, thresholds, observations, scale, tau, no_categories, threshold_alpha, threshold_beta)
+log_unnormalized_pseudoposterior_horseshoe <- function(interactions, thresholds, observations, scale, tau, prop_rel_edges, no_categories, threshold_alpha = 1.0, threshold_beta = 1.0, no_persons = 1, no_interactions = 1) {
+    .Call(`_bgms_log_unnormalized_pseudoposterior_horseshoe`, interactions, thresholds, observations, scale, tau, prop_rel_edges, no_categories, threshold_alpha, threshold_beta, no_persons, no_interactions)
 }
 
 emvs_log_unnormalized_pseudoposterior <- function(interactions, thresholds, observations, no_categories, xi, slab_var, theta = 0.5, hierarchical = FALSE, indicator_alpha = 1.0, indicator_beta = 1.0, threshold_alpha = 1.0, threshold_beta = 1.0) {
