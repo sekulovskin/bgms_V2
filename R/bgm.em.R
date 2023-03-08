@@ -1,6 +1,6 @@
-#' EM edge selection for a Markov Random Field model for ordinal variables. 
+#' EM variable selection for a Markov Random Field model for ordinal variables. 
 #'
-#' The function \code{emes} selects promising edges for the ordinal 
+#' The function \code{bgm.em} selects promising edges for the ordinal 
 #' MRF using the joint pseudolikelihood and a continuous spike and slab prior 
 #' distribution stipulated on the MRF's interaction or association parameters.
 #'
@@ -49,16 +49,65 @@
 #'   contains the category thresholds per node. If \code{hierarchical = TRUE}, 
 #'   the modal estimate of the prior inclusion probability \code{theta} is also 
 #'   provided.
-emes = function(x, 
-                precision = 0.975,
-                convergence_criterion = sqrt(.Machine$double.eps), 
-                theta = 0.5, 
-                hierarchical = FALSE, 
-                indicator_alpha = 1, 
-                indicator_beta = 1, 
-                maximum_iterations = 1e3,
-                threshold_alpha = 1,
-                threshold_beta = 1) {
+#'   
+#' @examples 
+#' \dontrun{
+#'  ##Analyse the Wenchuan dataset
+#'  fit = bgm.em(x = Wenchuan)
+#'   
+#'   
+#'  #------------------------------------------------------------------------------|
+#'  # INCLUSION - EDGE WEIGHT PLOT
+#'  #------------------------------------------------------------------------------|
+#'   
+#'  par(mar = c(6, 5, 1, 1))
+#'  plot(x = fit$interactions[lower.tri(fit$interactions)], 
+#'       y = fit$gamma[lower.tri(fit$gamma)], ylim = c(0, 1), 
+#'       xlab = "", ylab = "", axes = FALSE, pch = 21, bg = "#bfbfbf", cex = 1.3)
+#'  abline(h = 0, lty = 2, col = "#bfbfbf")
+#'  abline(h = 1, lty = 2, col = "#bfbfbf")
+#'  abline(h = .5, lty = 2, col = "#bfbfbf")
+#'  mtext("Posterior Inclusion Probability", side = 1, line = 3, cex = 1.7)
+#'  mtext("Posterior Mode Edge Weight", side = 2, line = 3, cex = 1.7)
+#'  axis(1)
+#'  axis(2, las = 1)
+#'   
+#'   
+#'  #------------------------------------------------------------------------------|
+#'  # THE LOCAL MEDIAN PROBABILITY NETWORK
+#'  #------------------------------------------------------------------------------|
+#'   
+#'  library(qgraph) #For plotting the estimated network
+#'   
+#'  posterior.inclusion = fit$gamma[lower.tri(fit$gamma)]
+#'  tmp = fit$interactions[lower.tri(fit$interactions)]
+#'  tmp[posterior.inclusion < 0.5] = 0
+#'   
+#'  median.prob.model = matrix(0, nrow = ncol(Wenchuan), ncol = ncol(Wenchuan))
+#'  median.prob.model[lower.tri(median.prob.model)] = tmp
+#'  median.prob.model = median.prob.model + t(median.prob.model)
+#'   
+#'  rownames(median.prob.model) = colnames(Wenchuan)
+#'  colnames(median.prob.model) = colnames(Wenchuan)
+#'   
+#'  qgraph(median.prob.model, 
+#'         theme = "TeamFortress", 
+#'         maximum = .5,
+#'         fade = FALSE,
+#'         color = c("#f0ae0e"), vsize = 10, repulsion = .9, 
+#'         label.cex = 1.1, label.scale = "FALSE", 
+#'         labels = colnames(Wenchuan))
+#' }    
+bgm.em = function(x, 
+                  precision = 0.975,
+                  convergence_criterion = sqrt(.Machine$double.eps), 
+                  theta = 0.5, 
+                  hierarchical = FALSE, 
+                  indicator_alpha = 1, 
+                  indicator_beta = 1, 
+                  maximum_iterations = 1e3,
+                  threshold_alpha = 1,
+                  threshold_beta = 1) {
   
   #Check prior set-up for the interaction parameters ---------------------------
   if(precision < 0 || precision > 1)
@@ -103,17 +152,22 @@ emes = function(x,
   no_interactions = no_nodes * (no_nodes - 1) / 2
   no_thresholds = sum(no_categories)
   no_parameters = no_interactions + no_thresholds
+  no_persons = nrow(x)
   
   # Set spike and slab prior variances -----------------------------------------
   fit <- try(mple(x = x, no_categories = no_categories), 
              silent = TRUE)
-  if(class(fit) != "try-error") {
+  if(inherits(fit, "try-error")) {
+    stop(paste0(
+      "We use a continuous spike and slab prior for the pairwise interactions.\n",
+      "And use a function of the second derivatives of the MRF evaluated at the maximum\n",
+      "pseudolikelihood estimates to set the variance of this prior distribution. We\n",
+      "could not find this maximum for your data. Perhaps there were low category\n",
+      "counts?"))
+  } else {
     thresholds <- fit$thresholds
     interactions <- fit$interactions
-  } else {
-    stop("Pseudolikelihood optimization failed. Please check the data. If the 
-         data checks out, please try different starting values.")
-  }
+  } 
   
   xi <- uniroot (f = xi_delta_matching,
                  interval = c(.Machine$double.eps,
@@ -133,7 +187,7 @@ emes = function(x,
   gradient <- matrix(data = NA,
                      nrow = 1,
                      ncol = no_parameters)
-
+  
   log_pseudoposterior <- 
     emvs_log_unnormalized_pseudoposterior(interactions = interactions,
                                           thresholds = thresholds,
@@ -208,11 +262,11 @@ emes = function(x,
     
     hessian[-(1:no_thresholds), -(1:no_thresholds)] <- 
       hessian_interactions_pseudoposterior_normal(interactions = interactions, 
-                           thresholds = thresholds, 
-                           observations = x, 
-                           no_categories = no_categories,
-                           interaction_var = interaction_var)
-
+                                                  thresholds = thresholds, 
+                                                  observations = x, 
+                                                  no_categories = no_categories,
+                                                  interaction_var = interaction_var)
+    
     hessian[-(1:no_thresholds), 1:no_thresholds] <- 
       hessian_crossparameters(interactions = interactions, 
                               thresholds = thresholds, 

@@ -130,27 +130,30 @@ mppe = function(x,
     mpl = try(mple(x = x, no_categories = no_categories), 
               silent = TRUE)
     if(inherits(mpl, what = "try-error"))
-      stop("You have chosen the unit information prior. To set-up this prior, 
-      the log-pseudolikelihood needs to be optimized. This failed for your data. 
-      Please check your data for missing categories, or low category counts.
-      Please contact the package author if the data checks out and the data do 
-      not explain why optimization failed.")
+      stop("You have chosen the unit information prior. To set-up this prior,\n", 
+           "the log-pseudolikelihood needs to be optimized. This failed for \n",
+           "your data. Please switch to a different prior distribution.")
     
     # Asymptotic covariance ----------------------------------------------------
     hessian =  hessian_interactions_pseudolikelihood(interactions = mpl$interactions, 
                                                      thresholds = mpl$thresholds, 
                                                      observations = x,
                                                      no_categories)
-    varcov <- -solve(hessian) # 
+    
+    # IF interaction_prior = UnitInfo +
+    varcov <- -solve(hessian) 
     varcov <- no_persons * varcov
+    
+    # IF interaction_prior = UnitInfo 
     hessian = diag(-solve(hessian))
     pr_var = no_persons * hessian
+    
     unit_info = matrix(0, 
                        nrow = no_nodes, 
                        ncol = no_nodes)
     
     cntr = 0
-    for(node1 in 1:(no_nodes - 1)) {
+    for(node1 in 1:(no_nodes - 1)) {             #INSPECT THIS AGAIN
       for(node2 in (node1 + 1):no_nodes) {
         cntr = cntr + 1
         unit_info[node1, node2] = pr_var[cntr]
@@ -245,7 +248,7 @@ mppe = function(x,
                                                 thresholds, 
                                                 observations = x,
                                                 no_categories, 
-                                                interaction_var = unit_info,
+                                                interaction_var = unit_info,  # For the UI+ this is not correct, this should  instead take varcov as an argument!!
                                                 threshold_alpha,
                                                 threshold_beta)
       

@@ -219,7 +219,7 @@ NumericVector gradient_interactions_pseudoposterior_normal(NumericMatrix interac
     for(int t = s + 1; t < no_nodes; t++) {
       counter += 1;
       //Contribution of the normal prior density -------------------------------
-      gradient[counter] -= interactions(s, t) / interaction_var(s, t);
+      gradient[counter] -= interactions(s, t) / interaction_var(s, t);  // interaction_var = Unit Info 
     }
   }
   return gradient;
