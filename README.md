@@ -60,7 +60,7 @@ The current developmental version can be installed with
 if (!requireNamespace("remotes")) { 
   install.packages("remotes")   
 }   
-remotes::install_github("MaartenMarsman/bgms")
+remotes::install_github("sekulovskin/bgms_V2")
 ```
 
 ## References
