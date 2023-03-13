@@ -184,8 +184,7 @@ double dh(double interaction,
             double no_persons = 1, 
             double no_interactions = 1) {
   
-  double p = R::runif(0, 1);
-  double lambda = 1 * std::tan((3.141593 * p)/2); //I made the scale to always equal 1
+  double lambda = abs(R::rcauchy(0,1));   //I made the scale to always equal 1
   
   double rel_edges =  prop_rel_edges*no_interactions;
   
@@ -193,11 +192,11 @@ double dh(double interaction,
   double tau_0 = (rel_edges / (no_interactions - rel_edges)) * (max_no_categories / sqrt(no_persons));
   
   if (tau == 1) {
-    tau = std::abs(R::rnorm(0, tau_0)); 
+    tau = abs(R::rnorm(0, tau_0));
   } else if (tau == 2) {
-    tau = tau_0 * std::tan((3.141593 * p)/2);  
+    tau = abs(R::rcauchy(0, tau_0));
   } else if (tau == 3) {
-    tau = 1 * std::tan((3.141593 * p)/2); //I made the scale to always equal 1
+    tau = abs(R::rcauchy(0,1));
   }
   
   double sd =  lambda* tau;
