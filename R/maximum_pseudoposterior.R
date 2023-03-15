@@ -352,7 +352,7 @@ mppe = function(x,
          convergence_criterion)
         break
     }
-  } else if (interaction_prior == "Laplace") {  # change it with the psueudolikelihood
+  } else if (interaction_prior == "Laplace" | interaction_prior == "Horseshoe") {  # change it to the psueudolikelihood
     log_pl = log_pseudolikelihood(interactions, 
                                   thresholds, 
                                   observations = x,
@@ -431,117 +431,7 @@ mppe = function(x,
       if(abs(log_pl - old_log_pl) < convergence_criterion)
         break
     } 
-  } else if (interaction_prior == "Horseshoe") {
-    log_pseudoposterior = 
-      log_unnormalized_pseudoposterior_horseshoe(interactions, 
-                                              thresholds, 
-                                              observations = x,
-                                              scale = scale,
-                                              tau = tau,
-                                              prop_rel_edges = prop_rel_edges,
-                                              no_categories = no_categories ,
-                                              threshold_alpha = threshold_alpha,
-                                              threshold_beta = threshold_beta,
-                                              no_persons = no_persons,
-                                              no_interactions = no_interactions)
-    
-    hessian = matrix(data = NA, 
-                     nrow = no_parameters,
-                     ncol = no_parameters)
-    gradient = matrix(data = NA,
-                      nrow = 1,
-                      ncol = no_parameters)
-    
-    for(iteration in 1:maximum_iterations) {  
-      old_log_pseudoposterior = log_pseudoposterior
-      
-      #Compute gradient vector (first order derivatives) -----------------------
-      gradient[1:no_thresholds] = 
-        gradient_thresholds_pseudoposterior(interactions = interactions, 
-                                            thresholds = thresholds, 
-                                            observations = x,
-                                            no_categories,
-                                            threshold_alpha,
-                                            threshold_beta)
-      
-      gradient[-c(1:no_thresholds)] =
-        gradient_interactions_pseudoposterior_horseshoe(interactions = interactions,   #THIS!!!
-                                                     thresholds = thresholds,       
-                                                     observations = x,            # Don't foget to adjust the arguments! 
-                                                     no_categories, 
-                                                     tau = tau, 
-                                                     prop_rel_edges = prop_rel_edges,
-                                                     no_persons = no_persons,
-                                                     no_interactions)
-      
-      # Compute Hessian matrix (second order partial derivatives) --------------
-      hessian[1:no_thresholds, 1:no_thresholds] = 
-        hessian_thresholds_pseudoposterior(interactions = interactions, 
-                                           thresholds = thresholds, 
-                                           observations = x,
-                                           no_categories,
-                                           threshold_alpha,
-                                           threshold_beta)
-      
-      hessian[-(1:no_thresholds), -(1:no_thresholds)] = 
-        hessian_interactions_pseudoposterior_horseshoe(interactions = interactions, #THIS!!!
-                                                    thresholds = thresholds, 
-                                                    observations = x,
-                                                    no_categories = no_categories,
-                                                    tau = tau, 
-                                                    prop_rel_edges = prop_rel_edges,
-                                                    no_persons = no_persons,
-                                                    no_interactions = no_interactions)
-      
-      hessian[-(1:no_thresholds), 1:no_thresholds] = 
-        hessian_crossparameters(interactions = interactions, 
-                                thresholds = thresholds, 
-                                observations = x,
-                                no_categories)
-      
-      hessian[1:no_thresholds, -(1:no_thresholds)] = 
-        t(hessian[-(1:no_thresholds), 1:no_thresholds])
-      
-      # Update parameter values (Newton-Raphson step) --------------------------
-      Delta = gradient %*% solve(hessian)
-      if(any(is.nan(Delta)) || any(is.infinite(Delta)))
-        stop("log_pseudoposterior optimization failed. Please check the data. 
-             If the data checks out, please try different starting values.")
-      
-      cntr = 0
-      for(node in 1:no_nodes) {
-        for(category in 1:no_categories[node]) {
-          cntr = cntr + 1
-          thresholds[node, category] = thresholds[node, category] - Delta[cntr]
-        }
-      }
-      for(node in 1:(no_nodes - 1)) {
-        for(node_2 in (node + 1):no_nodes) {
-          cntr = cntr + 1
-          interactions[node, node_2] = interactions[node, node_2] - Delta[cntr]
-          interactions[node_2, node] = interactions[node, node_2]
-        }
-      }
-      
-      # Check for convergence ---------------------------------------------------
-      log_pseudoposterior = 
-        log_unnormalized_pseudoposterior_horseshoe(interactions, 
-                                                   thresholds, 
-                                                   observations = x,
-                                                   scale = scale,
-                                                   tau = tau,
-                                                   prop_rel_edges = prop_rel_edges,
-                                                   no_categories = no_categories ,
-                                                   threshold_alpha = threshold_alpha,
-                                                   threshold_beta = threshold_beta,
-                                                   no_persons = no_persons,
-                                                   no_interactions = no_interactions)
-      
-      if(abs(log_pseudoposterior - old_log_pseudoposterior) < 
-         convergence_criterion)
-        break
-    }
-  }
+  } 
   
   if(abs(log_pseudoposterior - old_log_pseudoposterior) >= 
      convergence_criterion && iteration == maximum_iterations)

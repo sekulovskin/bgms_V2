@@ -60,15 +60,47 @@ double dh_1(double interaction,
 }
 
 
+// ----------------------------------------------------------------------------|
+//  Variance of the pseudoposterior for the Horseshoe 
+// ----------------------------------------------------------------------------|
+
+double sd_approx_hs(double sigma,
+                    double tau = 1, 
+                    double prop_rel_edges = 1,        
+                    IntegerVector no_categories = 1,
+                    double no_persons = 1, 
+                    double no_interactions = 1) {
+  
+  double lambda = abs(R::rcauchy(0,1)); 
+  
+  double rel_edges =  prop_rel_edges*no_interactions;
+  
+  int max_no_categories = max(no_categories);
+  double tau_0 = (rel_edges / (no_interactions - rel_edges)) * (max_no_categories / sqrt(no_persons));
+  
+  if (tau == 1) {
+    tau = abs(R::rnorm(0, tau_0));
+  } else if (tau == 2) {
+    tau = abs(R::rcauchy(0, tau_0));
+  } else if (tau == 3) {
+    tau = abs(R::rcauchy(0,1));
+  }
+  
+  double sd_prior =  lambda * tau;
+  double sd_post = (sd_prior*sigma)/(sd_prior + sigma);
+  return sd_post;
+}
+
+
 
 // ----------------------------------------------------------------------------|
-//  Scale transformation function for the laplace
+//  SD of the pseudoposterior under the Laplace 
 // ----------------------------------------------------------------------------|
 
-double sd_approx(double sigma){
+double sd_approx_lap(double sigma){
   double b = R::rexp(1);
-  double sd = (b*sigma)/(b + sigma);
-  return sd;
+  double sd_post = (b*sigma)/(b + sigma);
+  return sd_post;
 }
 
 
@@ -549,7 +581,7 @@ List metropolis_interactions_laplace_caching(NumericMatrix interactions,
       if(gamma(node1, node2) == 1) {
         current_state = interactions(node1, node2);
         proposed_state = R::rnorm(current_state,
-                                  sd_approx(proposal_sd(node1, node2)));
+                                  sd_approx_lap(proposal_sd(node1, node2)));
         
         log_prob = log_pseudolikelihood_ratio_caching(interactions,
                                                       thresholds,
@@ -607,7 +639,7 @@ NumericMatrix metropolis_interactions_laplace_nocaching(NumericMatrix interactio
       if(gamma(node1, node2) == 1) {
         current_state = interactions(node1, node2);
         proposed_state = R::rnorm(current_state,
-                                  sd_approx(proposal_sd(node1, node2)));
+                                  sd_approx_lap(proposal_sd(node1, node2)));
         
         log_prob = log_pseudolikelihood_ratio_nocaching(interactions,
                                                         thresholds,
@@ -661,7 +693,12 @@ List metropolis_interactions_horseshoe_caching(NumericMatrix interactions,
       if(gamma(node1, node2) == 1) {
         current_state = interactions(node1, node2);
         proposed_state = R::rnorm(current_state,
-                                  proposal_sd(node1, node2));
+                                  sd_approx_hs(proposal_sd(node1, node2),
+                                                tau = tau, 
+                                                prop_rel_edges = prop_rel_edges ,        
+                                                no_categories = no_categories,
+                                                no_persons = no_persons, 
+                                                no_interactions = no_interactions));
         
         log_prob = log_pseudolikelihood_ratio_caching(interactions,
                                                       thresholds,
@@ -738,7 +775,12 @@ NumericMatrix metropolis_interactions_horseshoe_nocaching(NumericMatrix interact
       if(gamma(node1, node2) == 1) {
         current_state = interactions(node1, node2);
         proposed_state = R::rnorm(current_state,
-                                  proposal_sd(node1, node2));
+                                  sd_approx_hs(proposal_sd(node1, node2),
+                                               tau = tau, 
+                                               prop_rel_edges = prop_rel_edges ,        
+                                               no_categories = no_categories,
+                                               no_persons = no_persons, 
+                                               no_interactions = no_interactions));
         
         log_prob = log_pseudolikelihood_ratio_nocaching(interactions,
                                                         thresholds,
@@ -1266,7 +1308,7 @@ List metropolis_edge_interaction_pair_laplace_caching(NumericMatrix interactions
     if(gamma(node1, node2) == 0) {
       current_state = 0.0;
       proposed_state = R::rnorm(current_state,
-                                sd_approx(proposal_sd(node1, node2)));
+                                sd_approx_lap(proposal_sd(node1, node2)));
       
       log_prob = log_pseudolikelihood_ratio_caching(interactions,
                                                     thresholds,
@@ -1372,7 +1414,7 @@ List metropolis_edge_interaction_pair_laplace_nocaching(NumericMatrix interactio
     if(gamma(node1, node2) == 0) {
       current_state = interactions(node1, node2);
       proposed_state = R::rnorm(current_state,
-                                sd_approx(proposal_sd(node1, node2)));
+                                sd_approx_lap(proposal_sd(node1, node2)));
       
       log_prob = log_pseudolikelihood_ratio_nocaching(interactions,
                                                       thresholds,
@@ -1462,7 +1504,12 @@ List metropolis_edge_interaction_pair_horseshoe_caching(NumericMatrix interactio
     if(gamma(node1, node2) == 0) {
       current_state = 0.0;
       proposed_state = R::rnorm(current_state,
-                                proposal_sd(node1, node2));
+                                sd_approx_hs(proposal_sd(node1, node2),
+                                             tau = tau, 
+                                             prop_rel_edges = prop_rel_edges ,        
+                                             no_categories = no_categories,
+                                             no_persons = no_persons, 
+                                             no_interactions = no_interactions));
       
       log_prob = log_pseudolikelihood_ratio_caching(interactions,
                                                     thresholds,
@@ -1585,7 +1632,12 @@ List metropolis_edge_interaction_pair_horseshoe_nocaching(NumericMatrix interact
     if(gamma(node1, node2) == 0) {
       current_state = interactions(node1, node2);
       proposed_state = R::rnorm(current_state,
-                                proposal_sd(node1, node2));
+                                sd_approx_hs(proposal_sd(node1, node2),
+                                             tau = tau, 
+                                             prop_rel_edges = prop_rel_edges ,        
+                                             no_categories = no_categories,
+                                             no_persons = no_persons, 
+                                             no_interactions = no_interactions));
       
       log_prob = log_pseudolikelihood_ratio_nocaching(interactions,
                                                       thresholds,

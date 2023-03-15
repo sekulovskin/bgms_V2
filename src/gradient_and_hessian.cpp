@@ -252,71 +252,6 @@ NumericVector gradient_interactions_pseudoposterior_cauchy(NumericMatrix interac
 }
 
 
-// Horseshoe ---------------------------------------------------
-
-// [[Rcpp::export]]
-
-double hs_var(double tau = 1, 
-              double prop_rel_edges = 1,        
-              IntegerVector no_categories = 1,
-              double no_persons = 1, 
-              double no_interactions = 1) {
-  
-  double lambda = abs(R::rcauchy(0,1)); 
-  
-  double rel_edges =  prop_rel_edges*no_interactions;
-  
-  int max_no_categories = max(no_categories);
-  double tau_0 = (rel_edges / (no_interactions - rel_edges)) * (max_no_categories / sqrt(no_persons));
-  
-  if (tau == 1) {
-    tau = abs(R::rnorm(0, tau_0));
-  } else if (tau == 2) {
-    tau = abs(R::rcauchy(0, tau_0));
-  } else if (tau == 3) {
-    tau = abs(R::rcauchy(0,1));
-  }
-  
-  double var =  pow(lambda * tau, 2);
-  return var;
-}
-
-// [[Rcpp::export]]
-
-NumericVector gradient_interactions_pseudoposterior_horseshoe(NumericMatrix interactions,
-                                                              NumericMatrix thresholds,
-                                                              IntegerMatrix observations,
-                                                              IntegerVector no_categories,
-                                                              double tau = 1, 
-                                                              double prop_rel_edges = 1,        
-                                                              double no_persons = 1, 
-                                                              double no_interactions = 1)
-{
-  
-  NumericVector gradient = gradient_interactions_pseudolikelihood(interactions,
-                                                                  thresholds,
-                                                                  observations,
-                                                                  no_categories);
-  
-  int no_nodes = observations.ncol();
-  int counter = -1;
-  
-  //Gradient of interactions parameters ----------------------------------------
-  for(int s = 0; s < no_nodes - 1; s++) {
-    for(int t = s + 1; t < no_nodes; t++) {
-      counter += 1;
-      //Contribution of the normal prior density -------------------------------
-      gradient[counter] -= interactions(s, t) / hs_var(tau,
-                                        prop_rel_edges,
-                                        no_categories,
-                                        no_persons,
-                                        no_interactions);  
-    }
-  }
-  return gradient;
-}
-
-
 
 // [[Rcpp::export]]
 NumericMatrix hessian_thresholds_pseudolikelihood(NumericMatrix interactions,
@@ -756,52 +691,6 @@ NumericMatrix hessian_interactions_pseudoposterior_cauchy(NumericMatrix interact
 
 
 
-// Horseshoe =====================
-
-// [[Rcpp::export]]
-
-NumericMatrix hessian_interactions_pseudoposterior_horseshoe(NumericMatrix interactions,
-                                                             NumericMatrix thresholds,
-                                                             IntegerMatrix observations,
-                                                             IntegerVector no_categories,
-                                                             double tau = 1, 
-                                                             double prop_rel_edges = 1,         // it doesn't allow me not to give it default arguments 
-                                                             double no_persons = 1, 
-                                                             double no_interactions = 1){
-  
-  NumericMatrix hessian = hessian_interactions_pseudolikelihood(interactions, 
-                                                                thresholds,
-                                                                observations,
-                                                                no_categories);
-  int no_nodes = observations.ncol();                   
-  int no_parameters = no_nodes * (no_nodes - 1) / 2;
-  
-  IntegerMatrix index (no_parameters, no_parameters);
-  int counter = 0;
-  
-  //create indexing matrix for partial derivatives
-  for(int s = 0; s < no_nodes - 1; s++) {
-    for(int t = s + 1; t < no_nodes; t++) {
-      index(s, t) = counter;
-      index(t, s) = counter;
-      counter++;
-    }
-  }
-  
-  // compute hessian ----------------------------------------------------------
-  for(int s = 0; s < no_nodes - 1; s++) {
-    for(int t = s + 1; t < no_nodes; t++) {
-      //Contribution of the prior density -------------------------------------
-      hessian(index(s, t), index(s, t)) -= 1 /  hs_var(tau,
-              prop_rel_edges,
-              no_categories,
-              no_persons,
-              no_interactions);    
-    }
-  }
-  
-  return hessian;  
-}
 
 
 // [[Rcpp::export]]
