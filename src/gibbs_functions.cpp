@@ -43,7 +43,7 @@ double dh_1(double interaction,
   
   double rel_edges =  prop_rel_edges*no_interactions;
   
-  int max_no_categories = max(no_categories);
+  int max_no_categories = max(no_categories);   // here! 
   double tau_0 = (rel_edges / (no_interactions - rel_edges)) * (max_no_categories / sqrt(no_persons));
   
   if (tau == 1) {
@@ -60,8 +60,20 @@ double dh_1(double interaction,
 }
 
 
+
+
 // ----------------------------------------------------------------------------|
-//  Variance of the pseudoposterior for the Horseshoe 
+//  SD of the pseudoposterior under the Laplace 
+// ----------------------------------------------------------------------------|
+
+double sd_approx_lap(double sigma){
+  double b = R::rexp(1);
+  double sd_post = (b*sigma)/(b + sigma);
+  return sd_post;
+}
+
+// ----------------------------------------------------------------------------|
+//  SD of the pseudoposterior under the Horseshoe 
 // ----------------------------------------------------------------------------|
 
 double sd_approx_hs(double sigma,
@@ -92,16 +104,6 @@ double sd_approx_hs(double sigma,
 }
 
 
-
-// ----------------------------------------------------------------------------|
-//  SD of the pseudoposterior under the Laplace 
-// ----------------------------------------------------------------------------|
-
-double sd_approx_lap(double sigma){
-  double b = R::rexp(1);
-  double sd_post = (b*sigma)/(b + sigma);
-  return sd_post;
-}
 
 
 // ----------------------------------------------------------------------------|
