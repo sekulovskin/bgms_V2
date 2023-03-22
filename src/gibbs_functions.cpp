@@ -43,7 +43,7 @@ double dh_1(double interaction,
   
   double rel_edges =  prop_rel_edges*no_interactions;
   
-  int max_no_categories = max(no_categories);   // here! 
+  int max_no_categories = max(no_categories) + 1;   // here! 
   double tau_0 = (rel_edges / (no_interactions - rel_edges)) * (max_no_categories / sqrt(no_persons));
   
   if (tau == 1) {
@@ -87,7 +87,7 @@ double sd_approx_hs(double sigma,
   
   double rel_edges =  prop_rel_edges*no_interactions;
   
-  int max_no_categories = max(no_categories);
+  int max_no_categories = max(no_categories) + 1;
   double tau_0 = (rel_edges / (no_interactions - rel_edges)) * (max_no_categories / sqrt(no_persons));
   
   if (tau == 1) {
