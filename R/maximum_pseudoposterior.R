@@ -353,7 +353,8 @@ mppe = function(x,
         break
     }
   } else if (interaction_prior == "Laplace" | interaction_prior == "Horseshoe") {  # change it to the psueudolikelihood
-    log_pl = log_pseudolikelihood(interactions, 
+   
+     log_pl = log_pseudolikelihood(interactions, 
                                   thresholds, 
                                   observations = x,
                                   no_categories)
@@ -421,6 +422,12 @@ mppe = function(x,
           interactions[node_2, node] = interactions[node, node_2]
         }
       }
+      
+      # Make the object called pseudoposterior so the convergence check on line
+      #443 can work
+      
+      log_pseudoposterior = log_pl
+      old_log_pseudoposterior = old_log_pl
       
       # Check for convergence ---------------------------------------------------
       log_pl = log_pseudolikelihood(interactions, 
