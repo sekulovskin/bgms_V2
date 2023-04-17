@@ -187,7 +187,13 @@ bgm = function(x,
                    tau = tau,
                    prop_rel_edges = prop_rel_edges), 
               silent = TRUE)
-  } else {
+  }  else if(interaction_prior == "UnitInfo+"){
+    pps = try(mppe_UI_plus(x = x, 
+                   no_categories = no_categories), 
+              silent = TRUE)
+  }
+  
+  else {
     pps = try(mppe(x = x, 
                    no_categories = no_categories, 
                    interaction_prior = interaction_prior), 

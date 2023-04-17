@@ -15,7 +15,7 @@ conditional_interactions_mu <- function(Omega, interactions){
     cond_mu[i] <- Omega[i, -i] %*% solve(Omega[-i,-i]) %*% interactions[-i]
   }
 
-  cond_mu_mat[lower.tri(cond_mu_mat, diag = FALSE)] <- cond_mu
+  cond_mu_mat[upper.tri(cond_mu_mat, diag = FALSE)] <- cond_mu
   cond_mu_mat[lower.tri(cond_mu_mat, diag = FALSE)] <- cond_mu
   
   
@@ -33,7 +33,7 @@ conditional_interactions_sigma <- function(Omega, interactions){
   }
   
   cond_sigma <- sqrt(cond_sigma_sq)  #obtain SDs
-  cond_sigma_mat[lower.tri(cond_sigma_mat, diag = FALSE)] <- cond_sigma
+  cond_sigma_mat[upper.tri(cond_sigma_mat, diag = FALSE)] <- cond_sigma
   cond_sigma_mat[lower.tri(cond_sigma_mat, diag = FALSE)] <- cond_sigma
   
   return(cond_sigma_mat)

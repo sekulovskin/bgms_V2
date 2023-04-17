@@ -51,7 +51,7 @@ double dh_1(double interaction,
   } else if (tau == 2) {
     tau = abs(R::rcauchy(0, tau_0));
   } else if (tau == 3) {
-    tau = abs(R::rcauchy(0,1));
+    tau = scale;
   }
   
   double sd =  lambda* tau;
@@ -78,7 +78,8 @@ double sd_approx_lap(double sigma){
 
 double sd_approx_hs(double sigma,
                     double tau = 1, 
-                    double prop_rel_edges = 1,        
+                    double prop_rel_edges = 1,
+                    double scale = 1,
                     IntegerVector no_categories = 1,
                     double no_persons = 1, 
                     double no_interactions = 1) {
@@ -95,7 +96,7 @@ double sd_approx_hs(double sigma,
   } else if (tau == 2) {
     tau = abs(R::rcauchy(0, tau_0));
   } else if (tau == 3) {
-    tau = abs(R::rcauchy(0,1));
+    tau = scale;
   }
   
   double sd_prior =  lambda * tau;
@@ -697,7 +698,8 @@ List metropolis_interactions_horseshoe_caching(NumericMatrix interactions,
         proposed_state = R::rnorm(current_state,
                                   sd_approx_hs(proposal_sd(node1, node2),
                                                 tau = tau, 
-                                                prop_rel_edges = prop_rel_edges ,        
+                                                prop_rel_edges = prop_rel_edges ,
+                                                scale = scale,
                                                 no_categories = no_categories,
                                                 no_persons = no_persons, 
                                                 no_interactions = no_interactions));
@@ -779,7 +781,8 @@ NumericMatrix metropolis_interactions_horseshoe_nocaching(NumericMatrix interact
         proposed_state = R::rnorm(current_state,
                                   sd_approx_hs(proposal_sd(node1, node2),
                                                tau = tau, 
-                                               prop_rel_edges = prop_rel_edges ,        
+                                               prop_rel_edges = prop_rel_edges ,
+                                               scale = scale,
                                                no_categories = no_categories,
                                                no_persons = no_persons, 
                                                no_interactions = no_interactions));
@@ -1508,7 +1511,8 @@ List metropolis_edge_interaction_pair_horseshoe_caching(NumericMatrix interactio
       proposed_state = R::rnorm(current_state,
                                 sd_approx_hs(proposal_sd(node1, node2),
                                              tau = tau, 
-                                             prop_rel_edges = prop_rel_edges ,        
+                                             prop_rel_edges = prop_rel_edges , 
+                                             scale = scale,
                                              no_categories = no_categories,
                                              no_persons = no_persons, 
                                              no_interactions = no_interactions));
@@ -1636,7 +1640,8 @@ List metropolis_edge_interaction_pair_horseshoe_nocaching(NumericMatrix interact
       proposed_state = R::rnorm(current_state,
                                 sd_approx_hs(proposal_sd(node1, node2),
                                              tau = tau, 
-                                             prop_rel_edges = prop_rel_edges ,        
+                                             prop_rel_edges = prop_rel_edges ,  
+                                             scale = scale,
                                              no_categories = no_categories,
                                              no_persons = no_persons, 
                                              no_interactions = no_interactions));

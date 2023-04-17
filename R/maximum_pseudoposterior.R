@@ -68,7 +68,7 @@ mppe = function(x,
                 maximum_iterations = 1e3, 
                 thresholds, 
                 interactions) {
-
+  
   #Check prior set-up for the interaction parameters ---------------------------
   if(interaction_prior != "Cauchy" & interaction_prior != "UnitInfo"  & interaction_prior != "Laplace" 
      & interaction_prior != "Horseshoe" & interaction_prior != "UnitInfo+")
@@ -78,7 +78,7 @@ mppe = function(x,
     if(scale <= 0)
       stop("The scale of the Cauchy prior needs to be positive.")
   }  
-
+  
   #Check prior set-up for the threshold parameters -----------------------------
   if(threshold_alpha <= 0  | !is.finite(threshold_alpha))
     stop("Parameter ``threshold_alpha'' needs to be positive.")
@@ -111,7 +111,7 @@ mppe = function(x,
      abs(maximum_iterations - round(maximum_iterations)) > 
      sqrt(.Machine$double.eps)) 
     stop("Parameter ``maximum_iterations'' needs to be a positive integer.")
-
+  
   # Starting values -----------------------------------------------------------
   if(!hasArg("thresholds")) {
     thresholds = matrix(0, 
@@ -125,7 +125,7 @@ mppe = function(x,
   }
   
   # Newton-Raphson -------------------------------------------------------------
-  if(interaction_prior == "UnitInfo" | interaction_prior == "UnitInfo+" ) {
+  if(interaction_prior == "UnitInfo") {
     # Maximum pseudolikelihood -------------------------------------------------
     mpl = try(mple(x = x, no_categories = no_categories), 
               silent = TRUE)
@@ -139,21 +139,14 @@ mppe = function(x,
                                                      thresholds = mpl$thresholds, 
                                                      observations = x,
                                                      no_categories)
+  
     
-    # IF interaction_prior = UnitInfo +
-    varcov <- -solve(hessian) 
-    varcov <- no_persons * varcov
-    
-    # IF interaction_prior = UnitInfo 
-    hessian = diag(-solve(hessian))
-    pr_var = no_persons * hessian
-    
+    pr_var = no_persons * diag(-solve(hessian))
     unit_info = matrix(0, 
                        nrow = no_nodes, 
                        ncol = no_nodes)
-    
     cntr = 0
-    for(node1 in 1:(no_nodes - 1)) {             #INSPECT THIS AGAIN
+    for(node1 in 1:(no_nodes - 1)) {
       for(node2 in (node1 + 1):no_nodes) {
         cntr = cntr + 1
         unit_info[node1, node2] = pr_var[cntr]
@@ -211,7 +204,7 @@ mppe = function(x,
                                                     observations = x,
                                                     no_categories, 
                                                     interaction_var = unit_info)
-
+      
       hessian[-(1:no_thresholds), 1:no_thresholds] = 
         hessian_crossparameters(interactions = interactions, 
                                 thresholds = thresholds, 
@@ -248,7 +241,7 @@ mppe = function(x,
                                                 thresholds, 
                                                 observations = x,
                                                 no_categories, 
-                                                interaction_var = unit_info,  # For the UI+ this is not correct, this should  instead take varcov as an argument!!
+                                                interaction_var = unit_info,  
                                                 threshold_alpha,
                                                 threshold_beta)
       
@@ -256,7 +249,126 @@ mppe = function(x,
          convergence_criterion)
         break
     }  
-  } else if (interaction_prior == "Cauchy") {
+  }   # Newton-Raphson -------------------------------------------------------------
+   else if(interaction_prior == "UnitInfo+" ) {
+    # Maximum pseudolikelihood -------------------------------------------------
+    mpl = try(mple(x = x, no_categories = no_categories), 
+              silent = TRUE)
+    if(inherits(mpl, what = "try-error"))
+      stop("You have chosen the unit information prior. To set-up this prior,\n", 
+           "the log-pseudolikelihood needs to be optimized. This failed for \n",
+           "your data. Please switch to a different prior distribution.")
+    
+    # Asymptotic covariance ----------------------------------------------------
+    hessian =  hessian_interactions_pseudolikelihood(interactions = mpl$interactions, 
+                                                     thresholds = mpl$thresholds, 
+                                                     observations = x,
+                                                     no_categories)
+    
+    # IF interaction_prior = UnitInfo +
+    unit_info <- -solve(hessian) 
+    unit_info <- no_persons * unit_info
+    # calculate the conditional interaction variances
+    interaction_var <- conditional_interactions_sigma(unit_info, mpl$interactions)
+    
+    
+    log_pseudoposterior = 
+      log_unnormalized_pseudoposterior_normal(interactions, 
+                                              thresholds, 
+                                              observations = x,
+                                              no_categories, 
+                                              interaction_var = interaction_var,
+                                              threshold_alpha,
+                                              threshold_beta)
+    
+    hessian = matrix(data = NA, 
+                     nrow = no_parameters,
+                     ncol = no_parameters)
+    gradient = matrix(data = NA,
+                      nrow = 1,
+                      ncol = no_parameters)
+    
+    for(iteration in 1:maximum_iterations) {  
+      old_log_pseudoposterior = log_pseudoposterior
+      
+      #Compute gradient vector (first order derivatives) ------------------------
+      gradient[1:no_thresholds] = 
+        gradient_thresholds_pseudoposterior(interactions = interactions, 
+                                            thresholds = thresholds, 
+                                            observations = x,
+                                            no_categories,
+                                            threshold_alpha,
+                                            threshold_beta)
+      
+      gradient[-c(1:no_thresholds)] =
+        gradient_interactions_pseudoposterior_normal(interactions = interactions, 
+                                                     thresholds = thresholds, 
+                                                     observations = x,
+                                                     no_categories, 
+                                                     interaction_var = interaction_var)
+      
+      # Compute Hessian matrix (second order partial derivatives) ---------------
+      hessian[1:no_thresholds, 1:no_thresholds] = 
+        hessian_thresholds_pseudoposterior(interactions = interactions, 
+                                           thresholds = thresholds, 
+                                           observations = x,
+                                           no_categories,
+                                           threshold_alpha,
+                                           threshold_beta)
+      
+      hessian[-(1:no_thresholds), -(1:no_thresholds)] = 
+        hessian_interactions_pseudoposterior_normal(interactions = interactions, 
+                                                    thresholds = thresholds, 
+                                                    observations = x,
+                                                    no_categories, 
+                                                    interaction_var = interaction_var)
+      
+      hessian[-(1:no_thresholds), 1:no_thresholds] = 
+        hessian_crossparameters(interactions = interactions, 
+                                thresholds = thresholds, 
+                                observations = x,
+                                no_categories)
+      
+      hessian[1:no_thresholds, -(1:no_thresholds)] = 
+        t(hessian[-(1:no_thresholds), 1:no_thresholds])
+      
+      # Update parameter values (Newton-Raphson step) ---------------------------
+      Delta = gradient %*% solve(hessian)
+      if(any(is.nan(Delta)) || any(is.infinite(Delta)))
+        stop("log_pseudoposterior optimization failed. Please check the data. 
+             If the data checks out, please try different starting values.")
+      
+      cntr = 0
+      for(node in 1:no_nodes) {
+        for(category in 1:no_categories[node]) {
+          cntr = cntr + 1
+          thresholds[node, category] = thresholds[node, category] - Delta[cntr]
+        }
+      }
+      for(node in 1:(no_nodes - 1)) {
+        for(node_2 in (node + 1):no_nodes) {
+          cntr = cntr + 1
+          interactions[node, node_2] = interactions[node, node_2] - Delta[cntr]
+          interactions[node_2, node] = interactions[node, node_2]
+        }
+      }
+      
+      # Check for convergence ---------------------------------------------------
+      log_pseudoposterior = 
+        log_unnormalized_pseudoposterior_normal(interactions, 
+                                                thresholds, 
+                                                observations = x,
+                                                no_categories, 
+                                                interaction_var = interaction_var, 
+                                                threshold_alpha,
+                                                threshold_beta)
+      
+      if(abs(log_pseudoposterior- old_log_pseudoposterior) < 
+         convergence_criterion)
+        break
+    }  
+  }
+  else if (interaction_prior == "Cauchy") {
     log_pseudoposterior = 
       log_unnormalized_pseudoposterior_cauchy(interactions, 
                                               thresholds, 
@@ -353,8 +465,8 @@ mppe = function(x,
         break
     }
   } else if (interaction_prior == "Laplace" | interaction_prior == "Horseshoe") {  # change it to the psueudolikelihood
-   
-     log_pl = log_pseudolikelihood(interactions, 
+    
+    log_pl = log_pseudolikelihood(interactions, 
                                   thresholds, 
                                   observations = x,
                                   no_categories)
@@ -470,7 +582,7 @@ mppe = function(x,
   rownames(hessian) = names
   colnames(hessian) = names
   
-  if(interaction_prior == "UnitInfo"){
+  if(interaction_prior == "UnitInfo" | interaction_prior == "UnitInfo+"){
     colnames(unit_info) = paste0("node ", 1:no_nodes)
     rownames(unit_info) = paste0("node ", 1:no_nodes)
     return(list(interactions = interactions, 
@@ -479,16 +591,204 @@ mppe = function(x,
                 unit_info = unit_info))
   } 
   
-  if(interaction_prior == "UnitInfo+"){
-    colnames(unit_info) = paste0("node ", 1:no_nodes)
-    rownames(unit_info) = paste0("node ", 1:no_nodes)
-    return(list(interactions = interactions, 
-                thresholds = thresholds,
-                hessian = hessian, 
-                unit_info = varcov))
-  }
-  
   return(list(interactions = interactions, 
               thresholds = thresholds,
               hessian = hessian))
 }
+
+
+
+
+
+
+mppe_UI_plus = function(x, 
+                  no_categories, 
+                  scale = 1,
+                  tau = 1,
+                  prop_rel_edges = 0.5,
+                  threshold_alpha = 1,
+                  threshold_beta = 1,
+                  convergence_criterion = sqrt(.Machine$double.eps),
+                  maximum_iterations = 1e3, 
+                  thresholds, 
+                  interactions) {
+  
+  
+  #Format the data input -------------------------------------------------------
+  data = reformat_data(x = x)
+  x = data$x
+  no_categories = data$no_categories
+  no_nodes = ncol(x)
+  no_persons = nrow(x)
+  no_thresholds = sum(no_categories)
+  no_interactions = no_nodes * (no_nodes - 1) / 2
+  no_parameters = no_thresholds + no_interactions
+  
+  #Check NR input --------------------------------------------------------------
+  if(convergence_criterion <= 0) 
+    stop("Parameter ``convergence_criterion'' needs to be positive.")
+  if(maximum_iterations <= 0 || 
+     abs(maximum_iterations - round(maximum_iterations)) > 
+     sqrt(.Machine$double.eps)) 
+    stop("Parameter ``maximum_iterations'' needs to be a positive integer.")
+  
+  # Starting values -----------------------------------------------------------
+  if(!hasArg("thresholds")) {
+    thresholds = matrix(0, 
+                        nrow = no_nodes, 
+                        ncol = max(no_categories))
+  }
+  if(!hasArg("interactions")) {
+    interactions = matrix(0, 
+                          nrow = no_nodes, 
+                          ncol = no_nodes)
+  }
+  
+  
+  # Maximum pseudolikelihood -------------------------------------------------
+  mpl = try(mple(x = x, no_categories = no_categories), 
+            silent = TRUE)
+  if(inherits(mpl, what = "try-error"))
+    stop("You have chosen the unit information prior. To set-up this prior,\n", 
+         "the log-pseudolikelihood needs to be optimized. This failed for \n",
+         "your data. Please switch to a different prior distribution.")
+  
+  # Asymptotic covariance ----------------------------------------------------
+  hessian =  hessian_interactions_pseudolikelihood(interactions = mpl$interactions, 
+                                                   thresholds = mpl$thresholds, 
+                                                   observations = x,
+                                                   no_categories)
+  
+  # IF interaction_prior = UnitInfo +
+  unit_info <- -solve(hessian) 
+  unit_info <- no_persons * unit_info
+  # calculate the conditional interaction variances
+  interaction_var <- conditional_interactions_sigma(unit_info, mpl$interactions)
+  
+  
+  log_pseudoposterior = 
+    log_unnormalized_pseudoposterior_normal(interactions, 
+                                            thresholds, 
+                                            observations = x,
+                                            no_categories, 
+                                            interaction_var = interaction_var,
+                                            threshold_alpha,
+                                            threshold_beta)
+  
+  hessian = matrix(data = NA, 
+                   nrow = no_parameters,
+                   ncol = no_parameters)
+  gradient = matrix(data = NA,
+                    nrow = 1,
+                    ncol = no_parameters)
+  
+  for(iteration in 1:maximum_iterations) {  
+    old_log_pseudoposterior = log_pseudoposterior
+    
+    #Compute gradient vector (first order derivatives) ------------------------
+    gradient[1:no_thresholds] = 
+      gradient_thresholds_pseudoposterior(interactions = interactions, 
+                                          thresholds = thresholds, 
+                                          observations = x,
+                                          no_categories,
+                                          threshold_alpha,
+                                          threshold_beta)
+    
+    gradient[-c(1:no_thresholds)] =
+      gradient_interactions_pseudoposterior_normal(interactions = interactions, 
+                                                   thresholds = thresholds, 
+                                                   observations = x,
+                                                   no_categories, 
+                                                   interaction_var = interaction_var)
+    
+    # Compute Hessian matrix (second order partial derivatives) ---------------
+    hessian[1:no_thresholds, 1:no_thresholds] = 
+      hessian_thresholds_pseudoposterior(interactions = interactions, 
+                                         thresholds = thresholds, 
+                                         observations = x,
+                                         no_categories,
+                                         threshold_alpha,
+                                         threshold_beta)
+    
+    hessian[-(1:no_thresholds), -(1:no_thresholds)] = 
+      hessian_interactions_pseudoposterior_normal(interactions = interactions, 
+                                                  thresholds = thresholds, 
+                                                  observations = x,
+                                                  no_categories, 
+                                                  interaction_var = interaction_var)
+    
+    hessian[-(1:no_thresholds), 1:no_thresholds] = 
+      hessian_crossparameters(interactions = interactions, 
+                              thresholds = thresholds, 
+                              observations = x,
+                              no_categories)
+    
+    hessian[1:no_thresholds, -(1:no_thresholds)] = 
+      t(hessian[-(1:no_thresholds), 1:no_thresholds])
+    
+    # Update parameter values (Newton-Raphson step) ---------------------------
+    Delta = gradient %*% solve(hessian)
+    if(any(is.nan(Delta)) || any(is.infinite(Delta)))
+      stop("log_pseudoposterior optimization failed. Please check the data. 
+             If the data checks out, please try different starting values.")
+    
+    cntr = 0
+    for(node in 1:no_nodes) {
+      for(category in 1:no_categories[node]) {
+        cntr = cntr + 1
+        thresholds[node, category] = thresholds[node, category] - Delta[cntr]
+      }
+    }
+    for(node in 1:(no_nodes - 1)) {
+      for(node_2 in (node + 1):no_nodes) {
+        cntr = cntr + 1
+        interactions[node, node_2] = interactions[node, node_2] - Delta[cntr]
+        interactions[node_2, node] = interactions[node, node_2]
+      }
+    }
+    
+    # Check for convergence ---------------------------------------------------
+    log_pseudoposterior = 
+      log_unnormalized_pseudoposterior_normal(interactions, 
+                                              thresholds, 
+                                              observations = x,
+                                              no_categories, 
+                                              interaction_var = interaction_var, 
+                                              threshold_alpha,
+                                              threshold_beta)
+    
+    if(abs(log_pseudoposterior- old_log_pseudoposterior) < 
+       convergence_criterion)
+      break
+  }  
+  
+  colnames(interactions) = paste0("node ", 1:no_nodes)
+  rownames(interactions) = paste0("node ", 1:no_nodes)
+  colnames(thresholds) = paste0("category ", 1:max(no_categories))
+  rownames(thresholds) = paste0("node ", 1:no_nodes)
+  
+  names = character(length = no_nodes * (no_nodes - 1) / 2 + 
+                      sum(no_categories))
+  cntr = 0
+  for(node in 1:no_nodes) {
+    for(category in 1:no_categories[node]) {
+      cntr = cntr + 1
+      names[cntr] = paste0("threshold(", node, ", ",category,")")
+    }
+  }
+  for(node in 1:(no_nodes - 1)) {
+    for(node_2 in (node + 1):no_nodes) {
+      cntr = cntr + 1
+      names[cntr] = paste0("sigma(", node, ", ",node_2,")")
+    }
+  }
+  rownames(hessian) = names
+  colnames(hessian) = names
+  
+  
+  return(list(interactions = interactions, 
+              thresholds = thresholds,
+              hessian = hessian, 
+              unit_info = unit_info))
+} 
+
