@@ -61,7 +61,7 @@ IntegerMatrix sample_omrf_gibbs(int no_states,
           cumsum += std::exp(exponent);
           probabilities[category + 1] = cumsum;
         }
-        
+
         u = cumsum * R::unif_rand();
         
         score = 0;

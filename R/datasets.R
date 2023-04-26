@@ -54,3 +54,4 @@
 #'
 #' \insertAllCited{}
 #'
+NULL

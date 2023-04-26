@@ -85,7 +85,7 @@ double log_unnormalized_pseudoposterior_normal(NumericMatrix interactions,
 double log_unnormalized_pseudoposterior_cauchy(NumericMatrix interactions,
                                                NumericMatrix thresholds,
                                                IntegerMatrix observations,
-                                               double scale,
+                                               double cauchy_scale,
                                                IntegerVector no_categories,
                                                double threshold_alpha = 1.0,
                                                double threshold_beta = 1.0) {
@@ -100,7 +100,7 @@ double log_unnormalized_pseudoposterior_cauchy(NumericMatrix interactions,
     for(int t = s + 1; t < no_nodes; t++) {
       unn_pseudo_post += R::dcauchy(interactions(s, t), 
                             0.0, 
-                            scale, 
+                            cauchy_scale, 
                             true);
     }
   }
@@ -116,27 +116,6 @@ double log_unnormalized_pseudoposterior_cauchy(NumericMatrix interactions,
   }
   return unn_pseudo_post;
 }
-
-
-// [[Rcpp::export]]
-double dlap(double interaction,
-            double mu = 0.0,
-            double b = 1.0,
-            bool log = true) {
-  
-  
-  double logden = - std::log(2) - std::log(b) - std::abs(interaction-mu)/b;
-  
-  if(log == true){
-    return(logden);
-  }
-  
-  else{
-    return(std::exp(logden));
-  }
-}
-
-
 
 // [[Rcpp::export]]
 double emvs_log_unnormalized_pseudoposterior(NumericMatrix interactions,

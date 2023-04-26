@@ -219,7 +219,7 @@ NumericVector gradient_interactions_pseudoposterior_normal(NumericMatrix interac
     for(int t = s + 1; t < no_nodes; t++) {
       counter += 1;
       //Contribution of the normal prior density -------------------------------
-      gradient[counter] -= interactions(s, t) / interaction_var(s, t);  // interaction_var = Unit Info 
+      gradient[counter] -= interactions(s, t) / interaction_var(s, t);
     }
   }
   return gradient;
@@ -230,7 +230,7 @@ NumericVector gradient_interactions_pseudoposterior_cauchy(NumericMatrix interac
                                                            NumericMatrix thresholds,
                                                            IntegerMatrix observations,
                                                            IntegerVector no_categories,
-                                                           double scale) {
+                                                           double cauchy_scale) {
   
   NumericVector gradient = gradient_interactions_pseudolikelihood(interactions,
                                                                   thresholds,
@@ -245,12 +245,11 @@ NumericVector gradient_interactions_pseudoposterior_cauchy(NumericMatrix interac
       counter += 1;
       //Contribution of the Cauchy prior density -------------------------------
       gradient[counter] -= 2 * interactions(s, t) / 
-        (interactions(s, t) * interactions(s, t) + scale * scale);
+        (interactions(s, t) * interactions(s, t) + cauchy_scale * cauchy_scale);
     }
   }
   return gradient;
 }
-
 
 
 // [[Rcpp::export]]
@@ -652,7 +651,7 @@ NumericMatrix hessian_interactions_pseudoposterior_cauchy(NumericMatrix interact
                                                           NumericMatrix thresholds,
                                                           IntegerMatrix observations,
                                                           IntegerVector no_categories,
-                                                          double scale) {
+                                                          double cauchy_scale) {
   
   NumericMatrix hessian = hessian_interactions_pseudolikelihood(interactions, 
                                                                 thresholds,
@@ -678,20 +677,15 @@ NumericMatrix hessian_interactions_pseudoposterior_cauchy(NumericMatrix interact
     for(int t = s + 1; t < no_nodes; t++) {
       //Contribution of the prior density --------------------------------------
       double tmp_m =  interactions(s, t) * interactions(s, t) - 
-        scale * scale;
+        cauchy_scale * cauchy_scale;
       double tmp_p = interactions(s, t) * interactions(s, t) + 
-        scale * scale;
+        cauchy_scale * cauchy_scale;
       hessian(index(s, t), index(s, t)) += 2 * tmp_m / (tmp_p * tmp_p);
     }
   }
   
   return hessian;  
 }
-
-
-
-
-
 
 // [[Rcpp::export]]
 NumericMatrix hessian_crossparameters(NumericMatrix interactions,
