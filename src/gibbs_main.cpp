@@ -7,6 +7,7 @@
 #include "gibbs_graphical_and_edge_model.h"
 using namespace Rcpp;
 
+
 // ----------------------------------------------------------------------------|
 // Gibbs step for graphical model parameters
 // ----------------------------------------------------------------------------|
@@ -47,6 +48,25 @@ List gibbs_step_graphical_model(IntegerMatrix observations,
     IntegerMatrix gamma = out["gamma"];
     NumericMatrix interactions = out["interactions"];
     NumericMatrix rest_matrix = out["rest_matrix"];
+    
+    
+  } else if(interaction_prior == "Laplace") {
+    List out = metropolis_edge_interaction_pair_laplace(interactions,
+                                                       thresholds,
+                                                       gamma,
+                                                       observations,
+                                                       no_categories,
+                                                       proposal_sd,
+                                                       cauchy_scale,
+                                                       index,
+                                                       no_interactions,
+                                                       no_persons,
+                                                       rest_matrix,
+                                                       inclusion);
+    IntegerMatrix gamma = out["gamma"];
+    NumericMatrix interactions = out["interactions"];
+    NumericMatrix rest_matrix = out["rest_matrix"];
+    
   } else if(interaction_prior ==  "UnitInfo") {
     List out = metropolis_edge_interaction_pair_unitinfo(interactions,
                                                          thresholds,
@@ -68,6 +88,22 @@ List gibbs_step_graphical_model(IntegerMatrix observations,
   //Update interactions (within model move)
   if(interaction_prior == "Cauchy") {
     List out = metropolis_interactions_cauchy(interactions,
+                                              thresholds,
+                                              gamma,
+                                              observations,
+                                              no_categories,
+                                              proposal_sd,
+                                              cauchy_scale,
+                                              no_persons,
+                                              no_nodes,
+                                              rest_matrix);
+    NumericMatrix interactions = out["interactions"];
+    NumericMatrix rest_matrix = out["rest_matrix"];
+  }
+  
+  
+  if(interaction_prior == "Laplace") {
+    List out = metropolis_interactions_laplace(interactions,
                                               thresholds,
                                               gamma,
                                               observations,

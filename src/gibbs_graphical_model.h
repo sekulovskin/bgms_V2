@@ -46,6 +46,21 @@ Rcpp::List metropolis_interactions_cauchy(Rcpp::NumericMatrix interactions,
 
 // ----------------------------------------------------------------------------|
 // MH algorithm to sample from the cull-conditional of the active interaction
+//  parameters (using a laplace prior)
+// ----------------------------------------------------------------------------|
+Rcpp::List metropolis_interactions_laplace(Rcpp::NumericMatrix interactions,
+                                          Rcpp::NumericMatrix thresholds,
+                                          Rcpp::IntegerMatrix gamma,
+                                          Rcpp::IntegerMatrix observations,
+                                          Rcpp::IntegerVector no_categories,
+                                          Rcpp::NumericMatrix proposal_sd,
+                                          double cauchy_scale,
+                                          int no_persons,
+                                          int no_nodes,
+                                          Rcpp::NumericMatrix rest_matrix);
+
+// ----------------------------------------------------------------------------|
+// MH algorithm to sample from the cull-conditional of the active interaction
 //  parameters (using a unit information prior)
 // ----------------------------------------------------------------------------|
 Rcpp::List metropolis_interactions_unitinfo(Rcpp::NumericMatrix interactions,
