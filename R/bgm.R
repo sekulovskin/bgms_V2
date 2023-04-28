@@ -158,7 +158,7 @@
 bgm = function(x,
                iter = 1e4,
                burnin = 1e3,
-               interaction_prior = c("UnitInfo", "Cauchy", "Laplace"),
+               interaction_prior = c("UnitInfo", "Cauchy", "Laplace", "UnitInfo+"),
                cauchy_scale = 2.5,
                threshold_alpha = 1,
                threshold_beta = 1,
@@ -174,18 +174,18 @@ bgm = function(x,
   if(abs(burnin - round(burnin)) > sqrt(.Machine$double.eps) || burnin < 0)
     stop("Parameter ``burnin'' needs to be a non-negative integer.")
 
-  #Check prior set-up for the interaction parameters ---------------------------
-  interaction_prior = match.arg(interaction_prior)
-  if(interaction_prior == "Cauchy" | interaction_prior == "Laplace") {
-    if(cauchy_scale <= 0)
-      stop("The scale of the Cauchy/Laplace prior needs to be positive.")
-  }
+  # Check prior set-up for the interaction parameters
+if(interaction_prior %in% c("Cauchy", "Laplace")) {
+  if(cauchy_scale <= 0)
+    stop("The scale of the Cauchy/Laplace prior needs to be positive.")
+}
 
-  #Check prior set-up for the threshold parameters -----------------------------
-  if(threshold_alpha <= 0  | !is.finite(threshold_alpha))
-    stop("Parameter ``threshold_alpha'' needs to be positive.")
-  if(threshold_beta <= 0  | !is.finite(threshold_beta))
-    stop("Parameter ``threshold_beta'' needs to be positive.")
+# Check prior set-up for the threshold parameters
+if(threshold_alpha <= 0  | !is.finite(threshold_alpha))
+  stop("Parameter ``threshold_alpha'' needs to be positive.")
+if(threshold_beta <= 0  | !is.finite(threshold_beta))
+  stop("Parameter ``threshold_beta'' needs to be positive.")
+
 
   #Check data input ------------------------------------------------------------
   if(!inherits(x, what = "matrix"))
@@ -212,7 +212,12 @@ bgm = function(x,
                    interaction_prior = interaction_prior,
                    cauchy_scale = cauchy_scale),
               silent = TRUE)
-  } else {
+  } else if (interaction_prior == "UnitInfo+"){
+    pps = try(mppe_UI_plus(x = x,
+             no_categories = no_categories),
+        silent = TRUE)
+    
+  } else{
     pps = try(mppe(x = x,
                    no_categories = no_categories,
                    interaction_prior = interaction_prior),
@@ -228,6 +233,8 @@ bgm = function(x,
 
   if(interaction_prior == "UnitInfo") {
     unit_info = sqrt(pps$unit_info)
+  } else if(interaction_prior == "UnitInfo+") {
+    unit_info = pps$unit_info
   } else {
     unit_info = matrix(data = NA, nrow = 1, ncol = 1)
   }

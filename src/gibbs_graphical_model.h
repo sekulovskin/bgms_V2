@@ -73,3 +73,19 @@ Rcpp::List metropolis_interactions_unitinfo(Rcpp::NumericMatrix interactions,
                                             int no_persons,
                                             int no_nodes,
                                             Rcpp::NumericMatrix rest_matrix);
+
+
+// ----------------------------------------------------------------------------|
+// MH algorithm to sample from the cull-conditional of the active interaction
+//  parameters (using a extended unit information prior)
+// ----------------------------------------------------------------------------|
+Rcpp::List metropolis_interactions_unitinfo_plus(Rcpp::NumericMatrix interactions,
+                                            Rcpp::NumericMatrix thresholds,
+                                            Rcpp::IntegerMatrix gamma,
+                                            Rcpp::IntegerMatrix observations,
+                                            Rcpp::IntegerVector no_categories,
+                                            Rcpp::NumericMatrix proposal_sd,
+                                            Rcpp::NumericMatrix unit_info,
+                                            int no_persons,
+                                            int no_nodes,
+                                            Rcpp::NumericMatrix rest_matrix);

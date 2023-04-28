@@ -83,7 +83,25 @@ List gibbs_step_graphical_model(IntegerMatrix observations,
     IntegerMatrix gamma = out["gamma"];
     NumericMatrix interactions = out["interactions"];
     NumericMatrix rest_matrix = out["rest_matrix"];
+ 
+  } else if(interaction_prior ==  "UnitInfo+") {
+    List out = metropolis_edge_interaction_pair_unitinfo_plus(interactions,
+                                                         thresholds,
+                                                         gamma,
+                                                         observations,
+                                                         no_categories,
+                                                         proposal_sd,
+                                                         unit_info,
+                                                         index,
+                                                         no_interactions,
+                                                         no_persons,
+                                                         rest_matrix,
+                                                         inclusion);
+    IntegerMatrix gamma = out["gamma"];
+    NumericMatrix interactions = out["interactions"];
+    NumericMatrix rest_matrix = out["rest_matrix"];
   }
+  
 
   //Update interactions (within model move)
   if(interaction_prior == "Cauchy") {
@@ -118,6 +136,20 @@ List gibbs_step_graphical_model(IntegerMatrix observations,
   }
   if(interaction_prior == "UnitInfo") {
     List out = metropolis_interactions_unitinfo(interactions,
+                                                thresholds,
+                                                gamma,
+                                                observations,
+                                                no_categories,
+                                                proposal_sd,
+                                                unit_info,
+                                                no_persons,
+                                                no_nodes,
+                                                rest_matrix);
+    NumericMatrix interactions = out["interactions"];
+    NumericMatrix rest_matrix = out["rest_matrix"];
+  }
+  if(interaction_prior == "UnitInfo+") {
+    List out = metropolis_interactions_unitinfo_plus(interactions,
                                                 thresholds,
                                                 gamma,
                                                 observations,

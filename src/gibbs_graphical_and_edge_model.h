@@ -51,3 +51,20 @@ Rcpp::List metropolis_edge_interaction_pair_unitinfo(Rcpp::NumericMatrix interac
                                                      int no_persons,
                                                      Rcpp::NumericMatrix rest_matrix,
                                                      Rcpp::NumericMatrix inclusion);
+
+// ----------------------------------------------------------------------------|
+// MH algorithm to sample from the cull-conditional of an edge + interaction
+//  pair (using a extended unit information prior)
+// ----------------------------------------------------------------------------|
+Rcpp::List metropolis_edge_interaction_pair_unitinfo_plus(Rcpp::NumericMatrix interactions,
+                                                     Rcpp::NumericMatrix thresholds,
+                                                     Rcpp::IntegerMatrix gamma,
+                                                     Rcpp::IntegerMatrix observations,
+                                                     Rcpp::IntegerVector no_categories,
+                                                     Rcpp::NumericMatrix proposal_sd,
+                                                     Rcpp::NumericMatrix unit_info,
+                                                     Rcpp::IntegerMatrix index,
+                                                     int no_interactions,
+                                                     int no_persons,
+                                                     Rcpp::NumericMatrix rest_matrix,
+                                                     Rcpp::NumericMatrix inclusion);
