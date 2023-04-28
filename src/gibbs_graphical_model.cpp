@@ -225,16 +225,16 @@ List metropolis_interactions_cauchy(NumericMatrix interactions,
 // MH algorithm to sample from the cull-conditional of the active interaction 
 //  parameters (using a laplace prior)
 // ----------------------------------------------------------------------------|
-List metropolis_interactions_laplace(NumericMatrix interactions, 
-                                             NumericMatrix thresholds,
-                                             IntegerMatrix gamma,
-                                             IntegerMatrix observations,
-                                             IntegerVector no_categories,
-                                             NumericMatrix proposal_sd,
-                                             double cauchy_scale,
-                                             int no_persons,
-                                             int no_nodes,
-                                             NumericMatrix rest_matrix) {
+List metropolis_interactions_laplace(NumericMatrix interactions,
+                                     NumericMatrix thresholds,
+                                     IntegerMatrix gamma,
+                                     IntegerMatrix observations,
+                                     IntegerVector no_categories,
+                                     NumericMatrix proposal_sd,
+                                     double cauchy_scale,
+                                     int no_persons,
+                                     int no_nodes,
+                                     NumericMatrix rest_matrix) {
   double proposed_state;
   double current_state;
   double log_prob;
@@ -248,30 +248,30 @@ List metropolis_interactions_laplace(NumericMatrix interactions,
                                   sd_approx_lap(proposal_sd(node1, node2)));
         
         log_prob = log_pseudolikelihood_ratio(interactions,
-                                                      thresholds,
-                                                      observations,
-                                                      no_categories,
-                                                      no_persons,
-                                                      node1,
-                                                      node2,
-                                                      proposed_state,
-                                                      current_state, 
-                                                      rest_matrix);
+                                              thresholds,
+                                              observations,
+                                              no_categories,
+                                              no_persons,
+                                              node1,
+                                              node2,
+                                              proposed_state,
+                                              current_state,
+                                              rest_matrix);
         log_prob += dlap_1(proposed_state, 0.0, cauchy_scale, true);
         log_prob -= dlap_1(current_state, 0.0, cauchy_scale, true);
         
-        //U = R::unif_rand();
-        U = R::runif(0, 1);
+        U = R::unif_rand();
         if(std::log(U) < log_prob) {
+          double state_diff = proposed_state - current_state;
           interactions(node1, node2) = proposed_state;
           interactions(node2, node1) = proposed_state;
           
           //Update the matrix of rest scores
           for(int person = 0; person < no_persons; person++) {
-            rest_matrix(person, node1) += observations(person, node2) * 
-              (proposed_state - current_state);
-            rest_matrix(person, node2) += observations(person, node1) * 
-              (proposed_state - current_state);
+            rest_matrix(person, node1) += observations(person, node2) *
+              state_diff;
+            rest_matrix(person, node2) += observations(person, node1) *
+              state_diff;
           }
         }
       }
