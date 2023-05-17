@@ -166,7 +166,9 @@ bgm = function(x,
                display_progress = TRUE,
                edge_prior = c("Bernoulli", "Beta-Binomial", "mfm-SBM"),
                theta = 0.5,
-               dirichlet_gamma = 1) {
+               dirichlet_gamma = 1,
+               beta_alpha = 1,
+               beta_beta = 1) {
 
   #Check Gibbs input -----------------------------------------------------------
   if(abs(iter - round(iter)) > sqrt(.Machine$double.eps))
@@ -309,8 +311,8 @@ if(threshold_beta <= 0  | !is.finite(threshold_beta))
                                display_progress = display_progress,
                                edge_prior = edge_prior,
                                theta = theta,
-                               beta_alpha = 1,
-                               beta_beta = 1)
+                               beta_alpha = beta_alpha,
+                               beta_beta = beta_beta)
   } else {
     out = gibbs_sampler_sbm(observations = x,
                             gamma = gamma,
@@ -330,8 +332,8 @@ if(threshold_beta <= 0  | !is.finite(threshold_beta))
                             save = save,
                             display_progress = display_progress,
                             dirichlet_gamma = dirichlet_gamma,
-                            beta_alpha = 1,
-                            beta_beta = 1)
+                            beta_alpha = beta_alpha,
+                            beta_beta = beta_beta)
   }
 
   #Preparing the output --------------------------------------------------------
